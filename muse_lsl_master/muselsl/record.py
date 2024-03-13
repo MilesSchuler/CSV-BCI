@@ -184,6 +184,7 @@ def _save(
 
     print("RES: " + str(res))
     print("length is" + str(len(res)))
+    print("blinks is" + str(len(blinks)))
 
     combined_array = [a + b for a, b in zip(timestamps, res)] 
     combined_array = [a + b for a, b in zip(combined_array, blinks)]

@@ -9,7 +9,7 @@ import asyncio
 from time import sleep
 from pylsl import resolve_byprop
 from threading import Thread
-from CSV_BCI.LiveCollectionData.streamer import Streamer
+from LiveCollectionData.streamer import Streamer
 
 from muse_lsl_master.muselsl import record 
 
