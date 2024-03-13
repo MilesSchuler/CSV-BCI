@@ -13,5 +13,5 @@ class Streamer():
         self.target(samples, timestamps)
 
     def get_data(self):
-        samples, timestamps = self.inlet.pull_chunk(timeout=1.0, max_samples=1)#LSL_EEG_CHUNK)
-        return samples, timestamps
+        samples, timestamp = self.inlet.pull_chunk(timeout=1.0, max_samples=1)#LSL_EEG_CHUNK)
+        return samples, timestamp
