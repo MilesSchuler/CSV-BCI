@@ -1,7 +1,14 @@
 import pygame
 import random
+from LiveCollectionData.muse_utility import stream, list_muses
+import asyncio
+from time import sleep
+from pylsl import resolve_byprop
+from threading import Thread
+from LiveCollectionData.streamer import Streamer
+from muselsl.constants import LSL_SCAN_TIMEOUT
+import numpy as np
 
-# Initialize Pygame
 pygame.init()
 
 # Set up display
@@ -105,5 +112,33 @@ def main():
 
     pygame.quit()
 
-if __name__ == "__main__":
-    main()
+# MUSE BEGIN
+
+def start_stream_thread(address):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(stream(address=address))
+
+def analyze_muse(data, timestamp):
+    # here would be where you would put the ai evaluator on the data
+    # call bird.flap() if a blink was detected
+    pass
+
+muse_address = list_muses()[0]['address']
+streaming_thread = Thread(name="Streaming Thread", target=start_stream_thread, args=(muse_address,))
+streaming_thread.start()
+
+sleep(10.)
+
+streams = resolve_byprop('type', 'EEG', timeout=LSL_SCAN_TIMEOUT)
+if len(streams) == 0:
+    raise(RuntimeError("Can't find EEG stream."))
+print("Start acquiring data.")
+
+streamer = Streamer(streams[0], analyze_muse)
+streamer.start(1/60)
+
+
+
+#if __name__ == "__main__":
+#    main()
