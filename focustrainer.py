@@ -8,6 +8,9 @@ from muselsl.constants import LSL_SCAN_TIMEOUT
 import csv
 import sys
 
+COUNTER = 0
+TOGGLE = 0
+
 def start_stream_thread(address):
     print("Thread Started")
     loop = asyncio.new_event_loop()
@@ -21,7 +24,20 @@ def begin_collecting():
         writer = csv.writer(file)
 
         def write_data(data, timestamp):
-            writer.writerow([timestamp] + data)
+            global COUNTER
+            global TOGGLE
+
+            COUNTER += 1
+            if COUNTER == 50:
+                writer.writerow([timestamp] + data + [TOGGLE % 2])
+
+                if TOGGLE % 2:
+                    print("focus now")
+                else:
+                    print("stop focusing")
+
+                TOGGLE += 1
+                COUNTER = 0
 
         muse_address = list_muses()[0]['address']
         streaming_thread = Thread(name="Streaming Thread", target=start_stream_thread, args=(muse_address,))
