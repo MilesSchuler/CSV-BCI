@@ -122,6 +122,8 @@ def start_stream_thread(address):
 def analyze_muse(data, timestamp):
     # here would be where you would put the ai evaluator on the data
     # call bird.flap() if a blink was detected
+    # data probably needs to be a list of datas and timestamps
+    #   ie. [[[x, y, z], t]], [[x, y, z], t]], [[x, y, z], t]]]
     pass
 
 muse_address = list_muses()[0]['address']
