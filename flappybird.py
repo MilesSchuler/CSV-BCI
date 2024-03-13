@@ -68,7 +68,7 @@ class Pipe:
         pygame.draw.rect(WIN, GREEN, self.bottom_pipe)
 
 # Main function
-def main():
+def start_game_loop():
     bird = Bird()
     pipes = [Pipe(WIDTH + i * 300) for i in range(2)]
     clock = pygame.time.Clock()
@@ -122,8 +122,9 @@ def start_stream_thread(address):
 def analyze_muse(data, timestamp):
     # here would be where you would put the ai evaluator on the data
     # call bird.flap() if a blink was detected
-    # data probably needs to be a list of datas and timestamps
-    #   ie. [[[x, y, z], t]], [[x, y, z], t]], [[x, y, z], t]]]
+    # data probably needs to be a list of datas and timestamps ie.
+    d1, d2, d3, t = 0, 0, 0, 0
+    data = [[[d1, d2, d3], t], [[d1, d2, d3], t], [[d1, d2, d3], t]]
     pass
 
 muse_address = list_muses()[0]['address']
@@ -143,4 +144,4 @@ streamer.start(1/60)
 
 
 #if __name__ == "__main__":
-#    main()
+#    start_game_loop()
