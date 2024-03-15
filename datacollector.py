@@ -1,18 +1,21 @@
 import time
-
 import pygame
-
 import muselsl
+import numpy as np 
+
+import matplotlib.pyplot as plt
+
+import csv
 
 from muse_lsl_master.muselsl import stream, list_muses
 import asyncio
 from time import sleep
 from pylsl import resolve_byprop
 from threading import Thread
-from CSV_BCI.LiveCollectionData.streamer import Streamer
+from LiveCollectionData.streamer import Streamer
 
 from muse_lsl_master.muselsl import record 
-
+ 
 from muselsl.constants import LSL_SCAN_TIMEOUT
 # import fictional_eeg_lib  # Uncomment and replace with actual EEG library
 
@@ -52,4 +55,28 @@ def setStream():
 
 setStream() 
 record(5)
+
+rows = []
+
+filename = 'example_data.csv'
+with open(filename, 'r') as file:
+    csvreader = csv.reader(file)
+    header = next(csvreader)
+
+    for row in csvreader:
+        rows.append(row)
+
+sensor1 = []
+
+for row in rows: 
+    sensor1.append(rows[row][0])
+
+x = np.arange(0, len(sensor1))
+y = sensor1
+
+plt.plot(x, y)
+
+plt.show()
+
+
 
