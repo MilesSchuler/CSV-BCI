@@ -10,7 +10,7 @@ from muselsl.stream import find_muse
 from muselsl import backends
 from muselsl.muse import Muse
 from muselsl.constants import LSL_SCAN_TIMEOUT, LSL_EEG_CHUNK, LSL_PPG_CHUNK, LSL_ACC_CHUNK, LSL_GYRO_CHUNK
-
+from datetime import datetime
 import csv
 
 import pygame 
@@ -84,15 +84,15 @@ def record(
 
     iteration = 1
 
+    filename = str(datetime.now())
+
     while (time() - t_init) < duration:
         try:
             blink = False
             if(blink_time <= time()):
-                print("blink now")
-                metronome.play()
-                print() 
-
                 if(time() >= blink_time + 0.2):
+                    print("blink now")
+                    metronome.play()
                     blink_time = time() + 1
                 blink = True 
 
@@ -115,7 +115,6 @@ def record(
                 rows.append(chunk)
                 
             
-            filename = "example_data.csv"
 
             if(iteration == 1):
                 with open(filename, 'w') as file:
