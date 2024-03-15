@@ -11,9 +11,13 @@ from muselsl import backends
 from muselsl.muse import Muse
 from muselsl.constants import LSL_SCAN_TIMEOUT, LSL_EEG_CHUNK, LSL_PPG_CHUNK, LSL_ACC_CHUNK, LSL_GYRO_CHUNK
 
+import csv
+
 import pygame 
 pygame.mixer.init()
-metronome_sound = pygame.mixer.Sound('muse_lsl_master/muselsl/metronome_click.wav') 
+
+metronome = pygame.mixer.Sound('metronome_click.wav')
+
 # Records a fixed duration of EEG data from an LSL stream into a CSV file
 
 
@@ -70,76 +74,60 @@ def record(
         ch_names.append(ch.child_value('label'))
     
 
-    res = []
-    blinks = []
-    timestamps = []
-    markers = []
     t_init = time()
     time_correction = inlet.time_correction()
-    last_written_timestamp = None
-
-    metronome_sound = pygame.mixer.Sound('muse_lsl_master/muselsl/metronome_click.wav') 
-
-    blink_interval = 1 
-    blink_length = 0.2
-
-    last_blink = 0 
-    printed_blink = False
-    last_blink = time()
     
     print('Start recording at time t=%.3f' % t_init)
     print('Time correction: ', time_correction)
 
     blink_time = time() + 1
 
-    while (time() - t_init) < duration:
+    iteration = 1
 
+    while (time() - t_init) < duration:
         try:
+            blink = False
+            if(blink_time <= time()):
+                print("blink now")
+                metronome.play()
+                print() 
+
+                if(time() >= blink_time + 0.2):
+                    blink_time = time() + 1
+                blink = True 
+
+
             data, timestamp = inlet.pull_chunk(
                 timeout=1.0, max_samples=chunk_length)
-    
-            blink = [False]
-
-            if(blink_time <= time()):
-                metronome_sound.play()
-                print("blink now")
-                print()
-
-                blink_time = time() + 1
-                last_blink = time() 
-            if(time() <= last_blink + 0.2):
-                blink = [True] 
-
-            for i in range(0, 12):
-                blinks.append(blink)
-
             
-            
-            
+            rows = []
 
-            if timestamp:
-                res.append(data)
-                timestamps.extend(timestamp)
-                tr = time()
-            if inlet_marker:
-                marker, timestamp = inlet_marker.pull_sample(timeout=0.0)
-                if timestamp:
-                    markers.append([marker, timestamp])
+            for i in range(0, len(data)):
+                chunk = []
 
-            # Save every 5s
-            if continuous and (last_written_timestamp is None or last_written_timestamp + 5 < timestamps[-1]):
-                _save(
-                    filename,
-                    res,
-                    timestamps,
-                    time_correction,
-                    dejitter,
-                    blinks,
-                    inlet_marker,
-                    markers,   
-                    last_written_timestamp=last_written_timestamp,
-                )
-                last_written_timestamp = timestamps[-1]
+                chunk.append(timestamp[i])
+
+                for k in range(0, 4):
+                    chunk.append(data[i][k])
+            
+                chunk.append(blink)
+
+                rows.append(chunk)
+                
+            
+            filename = "example_data.csv"
+
+            if(iteration == 1):
+                with open(filename, 'w') as file:
+                    writer = csv.writer(file)
+                    writer.writerow(["Timestamp", "Sensor 1", "Sensor 2", 'Sensor 3', "Sensor 4", "Blink"])
+                    writer.writerows(rows)
+            else:
+                with open(filename, 'a') as file:
+                    writer = csv.writer(file)
+                    writer.writerows(rows)
+            
+            iteration+=1
 
         except KeyboardInterrupt:
             break
@@ -147,79 +135,8 @@ def record(
     time_correction = inlet.time_correction()
     print("Time correction: ", time_correction)
 
-    _save(
-        filename,
-        res,
-        timestamps,
-        time_correction,
-        dejitter,
-        blinks,
-        inlet_marker,
-        markers,
-    )
-
     print("Done - wrote file: {}".format(filename))
-
-
-def _save(
-    filename: Union[str, Path],
-    res: list,
-    timestamps: list,
-    time_correction,
-    dejitter: bool,
-    blinks: List[bool],
-    inlet_marker,
-    markers,
-    last_written_timestamp: Optional[float] = None,
-):
-    res = np.concatenate(res, axis=0)
-    timestamps = np.array(timestamps) + time_correction
-
-    if dejitter:
-        y = timestamps
-        X = np.atleast_2d(np.arange(0, len(y))).T
-        lr = LinearRegression()
-        lr.fit(X, y)
-        timestamps = lr.predict(X)
-
-    print("RES: " + str(res))
-    print("length is" + str(len(res)))
-
-    combined_array = [a + b for a, b in zip(timestamps, res)] 
-    combined_array = [a + b for a, b in zip(combined_array, blinks)]
-
-    res = np.c_[timestamps, res, blinks]
-
-    res = combined_array
-
-    data = pd.DataFrame(data=res, columns=["timestamps", "TP9", "AF7", "AF8", "TP10"])
-
-    directory = os.path.dirname(filename)
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-    if inlet_marker and markers:
-        n_markers = len(markers[0][0])
-        for ii in range(n_markers):
-            data['Marker%d' % ii] = 0
-        # process markers:
-        for marker in markers:
-            # find index of markers
-            ix = np.argmin(np.abs(marker[1] - timestamps))
-            for ii in range(n_markers):
-                data.loc[ix, "Marker%d" % ii] = marker[0][ii]
-
-    # If file doesn't exist, create with headers
-    # If it does exist, just append new rows
-    if not Path(filename).exists():
-        # print("Saving whole file")
-        data.to_csv(filename, float_format='%.3f', index=False)
-    else:
-        # print("Appending file")
-        # truncate already written timestamps
-        data = data[data['timestamps'] > last_written_timestamp]
-        data.to_csv(filename, float_format='%.3f', index=False, mode='a', header=False)
-
+    
 
 
 # Rercord directly from a Muse without the use of LSL
