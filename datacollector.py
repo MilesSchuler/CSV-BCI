@@ -66,17 +66,5 @@ with open(filename, 'r') as file:
     for row in csvreader:
         rows.append(row)
 
-sensor1 = []
-
-for row in rows: 
-    sensor1.append(rows[row][0])
-
-x = np.arange(0, len(sensor1))
-y = sensor1
-
-plt.plot(x, y)
-
-plt.show()
-
 
 
