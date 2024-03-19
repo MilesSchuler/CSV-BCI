@@ -85,6 +85,8 @@ def record(
     iteration = 1
 
     filename = str(datetime.now())
+    # colons are reserved characters so can't be used in a file name
+    filename = filename.replace(':', '.')
 
     while (time() - t_init) < duration:
         try:
