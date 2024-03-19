@@ -7,24 +7,29 @@ from LiveCollectionData.streamer import Streamer
 from muselsl.constants import LSL_SCAN_TIMEOUT
 import sys
 import numpy as np
+import tensorflow as tf
+from training_constants import CHUNK_LENGTH, CHUNK_OVERLAP, BLINK_THRESHOLD
 
 PREVIOUS = 25
 previous_xs = []
 
+loaded_model = tf.keras.models.load_model('data_test.keras')
 
 def start_stream_thread(address):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     loop.run_until_complete(stream(address=address))
 
-def chunk_generator(arr, n, w):
-    for i in range(0, len(arr), n - w):
-        yield arr[i:i + n]
+def chunk_generator(arr, length, overlap):
+    for i in range(0, len(arr), length - overlap):
+        yield arr[i:i + length]
 
 def analyze_muse(data, timestamp):
-
-    checkable_x = []
-
+    global previous_xs
+    # add previous_xs to start of checkable_x
+    checkable_xs = previous_xs
+    
+    # add data to checkable_x
     for row in data:
         input = [
             float(row[1]),
@@ -33,23 +38,29 @@ def analyze_muse(data, timestamp):
             float(row[4])
         ]
 
-        previous_xs.append(input)
+        checkable_xs.append(input)
 
-        if len(previous_xs) > PREVIOUS:
-            previous_xs.pop(0)
-            checkable_x.append(np.array(previous_xs).flatten())
+    # set previous_xs to leftovers from checkable_x
+    gen = chunk_generator(checkable_xs, CHUNK_LENGTH, 1)
+    chunks = [chunk for chunk in gen]
+    previous_xs = chunks.pop()
 
-    print(len(checkable_x))
+    if len(chunks) > 0:
+        for chunk in chunks:
+            input = np.array(chunk).flatten()
+            input = input.reshape(1, -1)  # Add a batch dimension
+            if input.shape == (1, CHUNK_LENGTH * 4):
+                prediction = loaded_model.predict(input, verbose=0)
+                prediction = prediction[0]
+                print(prediction)
+                # [0, 1] for blink
+                if prediction[1] > BLINK_THRESHOLD:
+                    print("blink")
 
-    sys.exit()
-    for datum in data:
-        datum = datum[:4]
-        PREVIOUS.append(datum)
+            else:
+                pass
+            #print(input.shape)
 
-    # arr, size, overlap
-    for chunk in chunk_generator(PREVIOUS, 40, 20):
-        print(np.array(chunk[0]))
-        sys.exit()
 
 muse_address = list_muses()[0]['address']
 streaming_thread = Thread(name="Streaming Thread", target=start_stream_thread, args=(muse_address,))

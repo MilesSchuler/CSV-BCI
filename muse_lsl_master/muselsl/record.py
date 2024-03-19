@@ -207,4 +207,4 @@ def record_direct(duration,
     print('Done - wrote file: ' + filename + '.')
 
 
-record(60)
+record(240)
