@@ -29,7 +29,8 @@ def begin_collecting():
 
             COUNTER += 1
             if COUNTER == 50:
-                writer.writerow([timestamp] + data + [TOGGLE % 2])
+                for item in data:
+                    writer.writerow([timestamp] + item + [TOGGLE % 2])
 
                 if TOGGLE % 2:
                     print("focus now")

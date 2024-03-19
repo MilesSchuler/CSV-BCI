@@ -16,7 +16,7 @@ import csv
 import pygame 
 pygame.mixer.init()
 
-metronome = pygame.mixer.Sound('metronome_click.wav')
+metronome = pygame.mixer.Sound('muse_lsl_master/muselsl/metronome_click.wav')
 
 # Records a fixed duration of EEG data from an LSL stream into a CSV file
 
@@ -203,3 +203,6 @@ def record_direct(duration,
 
     recording.to_csv(filename, float_format='%.3f')
     print('Done - wrote file: ' + filename + '.')
+
+
+record(60)
