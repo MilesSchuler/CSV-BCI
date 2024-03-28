@@ -3,6 +3,16 @@ import random
 import csv
 from datetime import datetime
 import time
+import muselsl 
+from muselsl import record, stream, list_muses
+from muselsl.constants import LSL_SCAN_TIMEOUT, LSL_EEG_CHUNK, LSL_PPG_CHUNK, LSL_ACC_CHUNK, LSL_GYRO_CHUNK
+from pylsl import StreamInlet, resolve_byprop
+import threading
+from threading import Thread
+
+chunk_length = LSL_EEG_CHUNK
+data_source = "EEG"
+FILENAME = "Tetris " + str(datetime.now()).replace(':', '.') + ".csv"
 
 # Define constants
 SCREEN_WIDTH = 300
@@ -10,6 +20,9 @@ SCREEN_HEIGHT = 600
 GRID_WIDTH = 10
 GRID_HEIGHT = 20
 BLOCK_SIZE = SCREEN_WIDTH // GRID_WIDTH
+
+## CHANGE THIS TO ALTER HOW MANY SECONDS BETWEEN DIRECTIONAL THOUGHT COMPUTER SCHOULD READ 
+TIME_BETWEEN_THOUGHT = 0.1
 
 # Define colors
 BLACK = (0, 0, 0)
@@ -22,6 +35,8 @@ CYAN = (0, 255, 255)
 MAGENTA = (255, 0, 255)
 ORANGE = (255, 165, 0)
 
+data = []
+timestamps = []
 # Define tetromino shapes
 SHAPES = [
     [[1, 1, 1, 1]],  # I
@@ -48,6 +63,11 @@ SHAPES_COLORS = [
     ORANGE,  # L
     YELLOW   # O
 ]
+
+def collect_data(inlet, data, timestamps):
+    chunk_data, chunk_timestamps = inlet.pull_chunk(timeout=10, max_samples=30000)
+    data.extend(chunk_data)
+    timestamps.extend(chunk_timestamps)
 
 class Tetromino:
     def __init__(self, shape, color):
@@ -90,7 +110,7 @@ class TetrisGame:
         self.logged_key_presses.append((timestamp, key))
     
     def log_key_presses(self):
-        filename = "Tetris " + str(datetime.now()).replace(':', '.') + ".csv"
+        filename = FILENAME
         with open(filename, 'w', newline='') as csvfile:
             csvwriter = csv.writer(csvfile)
             csvwriter.writerow(['timestamp', 'key'])
@@ -189,8 +209,69 @@ class TetrisGame:
             self.current_piece = self.new_piece()
 
 if __name__ == "__main__":
-    pygame.init()
+    ## Start collecting brain data 
+    
+    streams = resolve_byprop('type', data_source, timeout=LSL_SCAN_TIMEOUT)
+    inlet = StreamInlet(streams[0], max_chunklen=chunk_length)
+    thread = threading.Thread(target=collect_data, args=(inlet, data, timestamps), daemon=True)
+    thread.start()
+
+    # Run the game
     game = TetrisGame()
     game.run()
-    pygame.quit()
 
+    # Wait for the data collection thread to finish
+    thread.join() 
+
+    ## 
+    lengthOfWave = TIME_BETWEEN_THOUGHT
+
+    ## Iterate through all the points from the EEG 
+    filename = FILENAME
+    file = open(filename)
+    csvreader = csv.reader(file)
+    next(csvreader)
+
+
+    rows = [] 
+    for row in csvreader:
+        rows.append(row)
+    
+    for row in data: 
+        row.append('none')
+
+    
+    for row in rows:  
+        key_time = row[0]
+        key = row[1]
+        
+        min_time = float(key_time) - lengthOfWave
+        max_time = float(key_time) + lengthOfWave
+
+        index = 0 
+
+        for timestamp in timestamps:
+            timestamp = float(timestamp)
+            if timestamp >= min_time and timestamp <= max_time:
+                data[index][-1] = key 
+
+            index+=1
+    
+    index = 0
+    for row in data: 
+        row.insert(0, str(timestamps[index]))
+        index+=1
+    
+    rows = data
+    
+    column_names = ['Timestamp', 'Sensor 1', 'Sensor 2', 'Sensor 3', 'Sensor 4', 'Sensor 5', 'Direction']
+    with open(filename, 'w') as csvfile:
+    # creating a csv writer object
+        csvwriter = csv.writer(csvfile)
+ 
+        csvwriter.writerow(column_names)
+ 
+        csvwriter.writerows(rows)
+
+
+        
