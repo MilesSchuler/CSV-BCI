@@ -65,7 +65,7 @@ SHAPES_COLORS = [
 ]
 
 def collect_data(inlet, data, timestamps):
-    chunk_data, chunk_timestamps = inlet.pull_chunk(timeout=10, max_samples=30000)
+    chunk_data, chunk_timestamps = inlet.pull_chunk(timeout=120, max_samples=30000)
     data.extend(chunk_data)
     timestamps.extend(chunk_timestamps)
 
