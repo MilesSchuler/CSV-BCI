@@ -8,21 +8,17 @@ from muselsl.constants import LSL_SCAN_TIMEOUT
 import sys
 import numpy as np
 import tensorflow as tf
-from training_constants import CHUNK_LENGTH, CHUNK_OVERLAP, BLINK_THRESHOLD
+from training_constants import CHUNK_LENGTH, CHUNK_OVERLAP, BLINK_THRESHOLD, chunk_generator
 
 PREVIOUS = 25
 previous_xs = []
 
-loaded_model = tf.keras.models.load_model('data_test.keras')
+loaded_model = tf.keras.models.load_model('data_test_with_validation.keras')
 
 def start_stream_thread(address):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     loop.run_until_complete(stream(address=address))
-
-def chunk_generator(arr, length, overlap):
-    for i in range(0, len(arr), length - overlap):
-        yield arr[i:i + length]
 
 def analyze_muse(data, timestamp):
     global previous_xs
@@ -52,9 +48,9 @@ def analyze_muse(data, timestamp):
             if input.shape == (1, CHUNK_LENGTH * 4):
                 prediction = loaded_model.predict(input, verbose=0)
                 prediction = prediction[0]
-                print(prediction)
                 # [0, 1] for blink
                 if prediction[1] > BLINK_THRESHOLD:
+                    print(prediction[1])
                     print("blink")
 
             else:

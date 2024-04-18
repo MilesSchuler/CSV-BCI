@@ -1,3 +1,5 @@
+##NOTE: YOU NEED TO STREAM MUSE FROM COMMAND LINE / TERMINAL BEFORE RUNNING THIS CODE 
+
 import pygame
 import random
 import csv
