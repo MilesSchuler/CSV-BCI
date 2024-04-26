@@ -18,7 +18,7 @@ TIME_BETWEEN_THOUGHT = 0.1
 
 chunk_length = LSL_EEG_CHUNK
 data_source = "EEG"
-FILENAME = "RecordedData_" + str(datetime.now()).replace(':', '.') + ".csv"
+FILENAME = "Tetris " + str(datetime.now()).replace(':', '.') + ".csv"
 
 def collect_data(inlet, data, timestamps):
     chunk_data, chunk_timestamps = inlet.pull_chunk(timeout=120, max_samples=30000)
