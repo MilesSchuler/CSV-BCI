@@ -12,17 +12,22 @@ from muselsl.constants import LSL_SCAN_TIMEOUT, LSL_EEG_CHUNK
 from pylsl import StreamInlet, resolve_byprop
 import threading
 from pynput.keyboard import Key, Listener
+import os
 
 data = []
 timestamps = []
+
+user = input("User: (Amy, Miles, Yitbrek, NA) ")
+if user == "NA":
+    FILENAME = "Tetris " + str(datetime.now()).replace(':', '.') + ".csv"
+else:
+    FILENAME = "Tetris Data " + user + ".csv"
 
 ## CHANGE THIS TO ALTER HOW MANY SECONDS BETWEEN DIRECTIONAL THOUGHT COMPUTER SHOULD READ 
 TIME_BETWEEN_THOUGHT = 0.1
 
 chunk_length = LSL_EEG_CHUNK
 data_source = "EEG"
-
-FILENAME = "Tetris " + str(datetime.now()).replace(':', '.') + ".csv"
 
 def collect_data(inlet, data, timestamps):
     chunk_data, chunk_timestamps = inlet.pull_chunk(timeout=120, max_samples=30000)
@@ -73,6 +78,7 @@ if __name__ == "__main__":
     thread.join() 
 
     filename = FILENAME
+
     with open(filename, 'w', newline='') as csvfile:
         csvwriter = csv.writer(csvfile)
         csvwriter.writerow(['timestamp', 'key'])
@@ -119,14 +125,21 @@ if __name__ == "__main__":
     
     rows = data
 
-    column_names = ['Timestamp', 'Sensor 1', 'Sensor 2', 'Sensor 3', 'Sensor 4', 'Sensor 5', 'Direction']
-    with open(filename, 'w') as csvfile:
-    # creating a csv writer object
+    if os.path.exists(FILENAME):
+        mode = 'a'  # Append mode if the file already exists
+    else:
+        mode = 'w'  # Write mode if the file doesn't exist
+
+    with open(filename, mode, newline='') as csvfile:
         csvwriter = csv.writer(csvfile)
+        if mode == 'w':
+            column_names = ['Timestamp', 'Sensor 1', 'Sensor 2', 'Sensor 3', 'Sensor 4', 'Sensor 5', 'Direction']
+            csvwriter.writerow(column_names)
+        for timestamp, key in key_events:
+            csvwriter.writerows(rows)
+      
  
-        csvwriter.writerow(column_names)
- 
-        csvwriter.writerows(rows)
+        
 
     # Save recorded data to a file
 
