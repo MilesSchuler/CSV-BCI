@@ -1,3 +1,6 @@
+# like before, need to start the muselsl stream elsewhere first
+# exit the data collection by pressing the escape key
+
 import keyboard
 import time
 import csv
@@ -18,6 +21,7 @@ TIME_BETWEEN_THOUGHT = 0.1
 
 chunk_length = LSL_EEG_CHUNK
 data_source = "EEG"
+
 FILENAME = "Tetris " + str(datetime.now()).replace(':', '.') + ".csv"
 
 def collect_data(inlet, data, timestamps):
@@ -30,19 +34,19 @@ def record_keys():
     start_time = time.time()
 
     def on_press(key):
-        #print('{0} pressed'.format(#key))
         check_key(key)
 
     def on_release(key):
-        #print('{0} release'.format(# key))
         if key == Key.esc:
             # Stop listener
             return False
 
     def check_key(key):
+        # converting to smth like 'up' rather than 'key.up', etc
         key_str = str(key)[slice(4,len(str(key)))]
         if key_str in ['up','down','left','right']: 
             key_events.append((time.time(), key_str))
+            # so we know it's working
             print(str(time.time()) + ": " + key_str)
 
     # Collect events until released
@@ -61,7 +65,7 @@ if __name__ == "__main__":
     thread = threading.Thread(target=collect_data, args=(inlet, data, timestamps), daemon=True)
     thread.start()
 
-    print("Recording key inputs.")
+    print("Recording key inputs. Press the esc key to stop.")
     key_events, start_time = record_keys()
     print("Key inputs recorded.")
 
@@ -126,7 +130,7 @@ if __name__ == "__main__":
 
     # Save recorded data to a file
 
-    print("Data recorded and saved.")
+    print("Data recorded and saved: " + filename)
 
 
         
