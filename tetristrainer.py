@@ -1,5 +1,4 @@
 # like before, need to start the muselsl stream elsewhere first
-# exit the data collection by pressing the escape key
 
 import keyboard
 import time
@@ -23,6 +22,9 @@ if user == "NA":
 else:
     FILENAME = "Tetris Data " + user + ".csv"
 
+total_seconds = int(input("Total seconds of data collection: "))
+end_time = time.time() + total_seconds
+
 ## CHANGE THIS TO ALTER HOW MANY SECONDS BETWEEN DIRECTIONAL THOUGHT COMPUTER SHOULD READ 
 TIME_BETWEEN_THOUGHT = 0.1
 
@@ -30,13 +32,24 @@ chunk_length = LSL_EEG_CHUNK
 data_source = "EEG"
 
 def collect_data(inlet, data, timestamps):
-    chunk_data, chunk_timestamps = inlet.pull_chunk(timeout=120, max_samples=30000)
-    data.extend(chunk_data)
-    timestamps.extend(chunk_timestamps)
+    global end_time
+
+
+    while end_time > time.time():
+        chunk_data, chunk_timestamps = inlet.pull_chunk(timeout=5, max_samples=30000)
+        data.extend(chunk_data)
+        timestamps.extend(chunk_timestamps)
+
+        time.sleep(1)
+    
+    print("Data collection finished.")
+    keyboard.press('esc')
+    keyboard.release('esc')
 
 def record_keys():
     key_events = []
     start_time = time.time()
+    global do_keep_recording
 
     def on_press(key):
         check_key(key)
@@ -59,6 +72,9 @@ def record_keys():
             on_press=on_press,
             on_release=on_release) as listener:
         listener.join()
+        thread
+
+    
 
     return key_events, start_time
 
@@ -70,25 +86,29 @@ if __name__ == "__main__":
     thread = threading.Thread(target=collect_data, args=(inlet, data, timestamps), daemon=True)
     thread.start()
 
-    print("Recording key inputs. Press the esc key to stop.")
+
+    print("Recording key inputs.")
     key_events, start_time = record_keys()
     print("Key inputs recorded.")
 
     # Wait for the data collection threads to finish
-    thread.join() 
+    thread.join()
 
-    filename = FILENAME
-
-    with open(filename, 'w', newline='') as csvfile:
-        csvwriter = csv.writer(csvfile)
-        csvwriter.writerow(['timestamp', 'key'])
-        for timestamp, key in key_events:
-            csvwriter.writerow([timestamp, key])
 
     ## 
     lengthOfWave = TIME_BETWEEN_THOUGHT
 
+    key_presses = 0
+
+    with open(FILENAME, 'w', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile)
+        csvwriter.writerow(['timestamp', 'key'])
+        for timestamp, key in key_events:
+            csvwriter.writerow([timestamp, key])
+            key_presses += 1
+
     ## Iterate through all the points from the EEG 
+    filename = FILENAME
     file = open(filename)
     csvreader = csv.reader(file)
     next(csvreader)
@@ -137,13 +157,22 @@ if __name__ == "__main__":
             csvwriter.writerow(column_names)
         for timestamp, key in key_events:
             csvwriter.writerows(rows)
-      
- 
+
+
+    # really janky temp fix
+    rows_to_keep = []
+
+    with open(FILENAME, 'r', newline='') as csvfile:
+        csvwriter = csv.reader(csvfile)
+        for index, row in enumerate(csvreader):
+            if index >= key_presses:
+                rows_to_keep.append(row)
+    
+    with open(filename, 'w', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile)
+        csvwriter.writerows(rows_to_keep)
         
 
     # Save recorded data to a file
 
     print("Data recorded and saved: " + filename)
-
-
-        
