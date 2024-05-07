@@ -32,6 +32,7 @@ FONT = pygame.font.SysFont(None, 40)
 GRAVITY = 0.25
 FLAP_STRENGTH = 5
 
+global bird
 # Bird class
 class Bird:
     def __init__(self):
@@ -72,6 +73,7 @@ class Pipe:
 
 # Main function
 def start_game_loop():
+    global bird
     bird = Bird()
     pipes = [Pipe(WIDTH + i * 300) for i in range(2)]
     clock = pygame.time.Clock()
@@ -116,69 +118,43 @@ def start_game_loop():
     pygame.quit()
 
 PREVIOUS = 25
-previous_xs = []
+previous = []
 
-loaded_model = tf.keras.models.load_model('data_test.keras')
+def start_stream_thread():
+    streams = resolve_byprop('type', 'EEG', timeout=LSL_SCAN_TIMEOUT)
+    if len(streams) == 0:
+        raise(RuntimeError("Can't find EEG stream."))
+    print("Start acquiring data.")
 
-def start_stream_thread(address):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(stream(address=address))
+    streamer = Streamer(streams[0], analyze_muse)
+    streamer.start(1/60)
 
 def chunk_generator(arr, length, overlap):
     for i in range(0, len(arr), length - overlap):
         yield arr[i:i + length]
 
 def analyze_muse(data, timestamp):
-    global previous_xs
+    global previous
     global bird
-    # add previous_xs to start of checkable_x
-    checkable_xs = previous_xs
-    
-    # add data to checkable_x
+
+    tp9 = 0
+
     for row in data:
-        input = [
-            float(row[1]),
-            float(row[2]),
-            float(row[3]),
-            float(row[4])
-        ]
+        tp9 += row[0]
+    
+    tp9 = tp9/12
 
-        checkable_xs.append(input)
-
-    # set previous_xs to leftovers from checkable_x
-    gen = chunk_generator(checkable_xs, CHUNK_LENGTH, 1)
-    chunks = [chunk for chunk in gen]
-    previous_xs = chunks.pop()
-
-    if len(chunks) > 0:
-        for chunk in chunks:
-            input = np.array(chunk).flatten()
-            input = input.reshape(1, -1)  # Add a batch dimension
-            if input.shape == (1, CHUNK_LENGTH * 4):
-                prediction = loaded_model.predict(input, verbose=0)
-                prediction = prediction[0]
-                # [0, 1] for blink
-                if prediction[1] > BLINK_THRESHOLD:
-                    print("blink")
-                    
-                    bird.flap()
-
-            else:
-                pass
-            #print(input.shape)
+    if len(previous) < 5:
+        previous.append(tp9)
+    else:
+        previous.pop(0)
+        previous.append(tp9)
+    
+    if previous[-1] < (previous[0] - 120):
+        print('blink')
+        bird.flap()
 
 
-muse_address = list_muses()[0]['address']
-streaming_thread = Thread(name="Streaming Thread", target=start_stream_thread, args=(muse_address,))
+streaming_thread = Thread(name="Streaming Thread", target=start_stream_thread)
 streaming_thread.start()
-
-sleep(10.)
-
-streams = resolve_byprop('type', 'EEG', timeout=LSL_SCAN_TIMEOUT)
-if len(streams) == 0:
-    raise(RuntimeError("Can't find EEG stream."))
-print("Start acquiring data.")
-
-streamer = Streamer(streams[0], analyze_muse)
-streamer.start(1/60)
+start_game_loop()
