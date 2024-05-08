@@ -1,3 +1,5 @@
+# Return key to restart, Esc key to quit
+
 from LiveCollectionData.muse_utility import stream, list_muses
 import asyncio
 from time import sleep
@@ -11,6 +13,9 @@ import tensorflow as tf
 from training_constants import CHUNK_LENGTH, CHUNK_OVERLAP, BLINK_THRESHOLD
 import pygame
 import random
+
+# flappybird.py can't find training_constants on my laptop, using place, this is the placeholder (commented out):
+# CHUNK_LENGTH = 2
 
 pygame.init()
 
@@ -115,7 +120,20 @@ def start_game_loop():
         WIN.blit(score_text, (10, 10))
         pygame.display.update()
 
-    pygame.quit()
+    
+
+    while running == False:
+        clock.tick(60)
+
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    running = False
+                    pygame.quit()
+                elif event.key == pygame.K_RETURN:
+                    running = True
+                    start_game_loop()
+
 
 PREVIOUS = 25
 previous = []
