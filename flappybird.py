@@ -10,7 +10,7 @@ from muselsl.constants import LSL_SCAN_TIMEOUT
 import sys
 import numpy as np
 import tensorflow as tf
-from training_constants import CHUNK_LENGTH, CHUNK_OVERLAP, BLINK_THRESHOLD
+from usingmuselsl.training_constants import CHUNK_LENGTH, CHUNK_OVERLAP, BLINK_THRESHOLD
 import pygame
 import random
 
@@ -80,7 +80,7 @@ class Pipe:
 def start_game_loop():
     global bird
     bird = Bird()
-    pipes = [Pipe(WIDTH + i * 300) for i in range(2)]
+    pipes = [Pipe(WIDTH + i * 250) for i in range(2)]
     clock = pygame.time.Clock()
     score = 0
 
