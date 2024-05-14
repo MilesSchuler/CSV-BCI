@@ -24,7 +24,7 @@ def convert_labels(y_chunk):
     else:
         return 0.
 
-with open("usingmuselsl/data_2024-05-06_20-49-31.csv") as f:  # Make sure to replace 'your_dataset.csv' with your actual file name
+with open("usingmuselsl/merged_data.csv") as f:  # Make sure to replace 'your_dataset.csv' with your actual file name
     reader = csv.reader(f)
     # next(reader, None)
     for row in reader:
