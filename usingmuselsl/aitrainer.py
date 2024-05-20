@@ -44,7 +44,7 @@ print("THERE ARE " + str(len(train_x)) + " DATA POINTS")
 print("THERE ARE " + str(np.count_nonzero(train_y)) + " BLINK POINTS")
 print("THERE ARE " + str(len(train_y) - np.count_nonzero(train_y)) + " NOBLINK POINTS")
 
-input("Press Enter to continue")
+input("Press Enter to continue\n")
 
 model = tf.keras.models.Sequential([
     tf.keras.layers.Input(shape=(CHUNK_LENGTH, 4)),
@@ -57,22 +57,24 @@ model = tf.keras.models.Sequential([
 
 
 initial_learning_rate = 0.00005
-decay_rate = 0.90
+
+decay_rate = 0.999
 
 lr_scheduler = ExponentialDecay(
     initial_learning_rate, 
-    decay_steps=10000, 
+    decay_steps=1000, 
     decay_rate=decay_rate, 
     staircase=True
 )
 
 
 model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=lr_scheduler),
+#model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=initial_learning_rate),
               loss='binary_crossentropy',
               metrics=['accuracy'])
 
 # Train the model with validation split
-history = model.fit(np.array(train_x), np.array(train_y), epochs=10)
+history = model.fit(np.array(train_x), np.array(train_y), epochs=6)
 
 # Save the trained model
-model.save('usingmuselsl/epic_data.keras')
+model.save('usingmuselsl/epic_ai_v10.keras')
