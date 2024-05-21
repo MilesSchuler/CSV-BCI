@@ -44,16 +44,13 @@ RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 
 # Fonts
-FONT = pygame.font.Font('CSV_BCI/SundayMilk.ttf', 40)
+FONT = pygame.font.Font('SundayMilk.ttf', 40)
 
 TEXT_COLOR = (255, 245, 48)
 
 # Constants
 GRAVITY = 0.25
 FLAP_STRENGTH = 5
-
-global roundnum
-roundnum = 0
 
 global bird
 # Bird class
@@ -109,7 +106,8 @@ def add_username(new_username):
     potential_username = cursor.fetchall()
 
     if len(potential_username) > 0:
-        username = potential_username[0]['name']
+        # assuming 'name' is the first column in the database
+        username = potential_username[0][0]
         print("We found it. ")
     else:
         query = 'INSERT INTO `BCI_users`(`name`, `high_score`) VALUES (%s,%s)'
@@ -178,11 +176,6 @@ def main_menu():
 
 # Main function
 def start_game_loop():
-    global roundnum
-    roundnum += 1
-    round = FONT.render(f"Round: {roundnum}", True, BLACK)
-    WIN.blit(round, (WIDTH - round.get_width() - 10, 10))
-
     global bird
     bird = Bird()
     pipes = [Pipe(WIDTH + i * 250) for i in range(2)]
@@ -233,21 +226,11 @@ def start_game_loop():
     while running == False:
         clock.tick(60)
 
-        game_over_text = FONT.render("Game Over!", True, RED)
-        restart_text = FONT.render("Press ENTER to restart or ESC to quit", True, BLACK)
-        final_score_text = FONT.render(f"Score: {score}", True, BLACK)
-        WIN.fill(WHITE)
-        WIN.blit(game_over_text, (WIDTH//2 - game_over_text.get_width()//2, HEIGHT//2 - game_over_text.get_height()//2))
-        WIN.blit(final_score_text, (10,10))
-        WIN.blit(restart_text, (WIDTH//2 - restart_text.get_width()//2, HEIGHT//2 + game_over_text.get_height()))
-        pygame.display.update()
-
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
                     pygame.quit()
-                    sys.exit()
                 elif event.key == pygame.K_RETURN:
                     running = True
                     start_game_loop()
