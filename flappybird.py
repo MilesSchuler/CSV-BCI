@@ -1,4 +1,5 @@
-# Return key to restart, Esc key to quit
+ # Return key to restart, Esc key to quit
+import mysql.connector
 
 from LiveCollectionData.muse_utility import stream, list_muses
 import asyncio
@@ -10,9 +11,21 @@ from muselsl.constants import LSL_SCAN_TIMEOUT
 import sys
 import numpy as np
 import tensorflow as tf
-from usingmuselsl.training_constants import CHUNK_LENGTH, CHUNK_OVERLAP, BLINK_THRESHOLD
+
 import pygame
 import random
+
+mydb = mysql.connector.connect(
+    host = "mysql.2324.lakeside-cs.org",
+    user = 'student2324',
+    password = 'm545CS42324',
+    database = '2324finalproject'
+)
+
+cursor = mydb.cursor()
+
+username = 'Player 1'
+
 
 # flappybird.py can't find training_constants on my laptop, using place, this is the placeholder (commented out):
 # CHUNK_LENGTH = 2
@@ -31,7 +44,9 @@ RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 
 # Fonts
-FONT = pygame.font.SysFont(None, 40)
+FONT = pygame.font.Font('CSV_BCI/SundayMilk.ttf', 40)
+
+TEXT_COLOR = (255, 245, 48)
 
 # Constants
 GRAVITY = 0.25
@@ -76,6 +91,88 @@ class Pipe:
         pygame.draw.rect(WIN, GREEN, self.top_pipe)
         pygame.draw.rect(WIN, GREEN, self.bottom_pipe)
 
+def draw_text(text, x, y):
+    img = FONT.render(text, True, TEXT_COLOR)
+    WIN.blit(img, (x, y))
+
+def add_username(new_username):
+    global username 
+    
+    query = 'SELECT * FROM BCI_users WHERE name = %s'
+    vals = (new_username,)
+
+    cursor.execute(query, vals)
+
+    potential_username = cursor.fetchall()
+
+    if len(potential_username) > 0:
+        username = potential_username[0]['name']
+        print("We found it. ")
+    else:
+        query = 'INSERT INTO `BCI_users`(`name`, `high_score`) VALUES (%s,%s)'
+        vals = (new_username, 0)
+        cursor.execute(query, vals)
+        
+        mydb.commit()
+
+        username = new_username
+
+        print("We added it gang")
+
+def main_menu():
+    run = True
+
+    username = ''
+
+    input_rect = pygame.Rect(100, 200, 300, 35)
+    enter_rect = pygame.Rect(305, 200, 35, 35)
+
+    color_active = pygame.Color('lightskyblue3')
+    color_passive = pygame.Color('black')
+
+    color_input_rect = color_passive
+    color_enter_rect = pygame.Color('grey')
+    active = False 
+
+    while run: 
+        WIN.fill((89, 247, 239))
+        msg = FONT.render("ENTER NICKNAME!", True, TEXT_COLOR)
+        WIN.blit(msg, ((WIN.get_width() - msg.get_width())/2, 150))
+
+        for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if input_rect.collidepoint(event.pos):
+                    active = True
+                    color_input_rect = color_active
+                elif enter_rect.collidepoint(event.pos) and len(username) > 0:
+                    add_username(username)
+                    start_game_loop()
+                else:
+                    active = False
+                    color_input_rect = color_passive
+
+
+            if event.type == pygame.QUIT:
+                run = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN and len(username) > 0:
+                    add_username(username)
+                    start_game_loop()
+                elif event.key == pygame.K_BACKSPACE and active == True:
+                    username = username[:-1]
+                elif len(username) < 10 and active == True:
+                    username += event.unicode
+
+        pygame.draw.rect(WIN, color_input_rect, input_rect, 2, border_radius=10)
+        pygame.draw.rect(WIN, color_enter_rect , enter_rect, border_radius = 10)
+        text_surface = FONT.render(username, True, (0, 0, 0))
+        WIN.blit(text_surface, (input_rect.x + 5, input_rect.y + 5)) 
+
+        input_rect.w = max(150, text_surface.get_width() + 10)
+
+        pygame.display.update()
+
+
 # Main function
 def start_game_loop():
     global bird
@@ -86,6 +183,8 @@ def start_game_loop():
 
     running = True
     while running:
+        draw_text("YOU LOSE", 160, 250)
+
         clock.tick(60)
 
         for event in pygame.event.get():
@@ -118,6 +217,7 @@ def start_game_loop():
             pipe.draw()
         score_text = FONT.render(f"Score: {score}", True, BLACK)
         WIN.blit(score_text, (10, 10))
+
         pygame.display.update()
 
     
@@ -133,7 +233,6 @@ def start_game_loop():
                 elif event.key == pygame.K_RETURN:
                     running = True
                     start_game_loop()
-
 
 PREVIOUS = 25
 previous = []
@@ -173,6 +272,7 @@ def analyze_muse(data, timestamp):
         bird.flap()
 
 
-streaming_thread = Thread(name="Streaming Thread", target=start_stream_thread)
-streaming_thread.start()
-start_game_loop()
+# streaming_thread = Thread(name="Streaming Thread", target=start_stream_thread)
+# streaming_thread.start()
+main_menu()
+
