@@ -52,6 +52,9 @@ TEXT_COLOR = (255, 245, 48)
 GRAVITY = 0.25
 FLAP_STRENGTH = 5
 
+global roundnum
+roundnum = 0
+
 global bird
 # Bird class
 class Bird:
@@ -176,6 +179,9 @@ def main_menu():
 
 # Main function
 def start_game_loop():
+    global roundnum
+    roundnum += 1
+
     global bird
     bird = Bird()
     pipes = [Pipe(WIDTH + i * 250) for i in range(2)]
@@ -219,12 +225,29 @@ def start_game_loop():
         score_text = FONT.render(f"Score: {score}", True, BLACK)
         WIN.blit(score_text, (10, 10))
 
+        round = FONT.render(f"Round: {roundnum}", True, BLACK)
+        WIN.blit(round, (WIN.get_width() - round.get_width() - 10, 10))
+
         pygame.display.update()
 
     
 
     while running == False:
         clock.tick(60)
+
+        game_over_text = FONT.render("Game Over!", True, RED)
+        restart_text1 = FONT.render("Press ENTER to restart", True, BLACK)
+        restart_text2 = FONT.render("Press ESC to quit", True, BLACK)
+        final_score_text = FONT.render(f"Score: {score}", True, BLACK)
+        current_round = FONT.render(f"Round: {roundnum}", True, BLACK)
+        WIN.fill(WHITE)
+        WIN.blit(game_over_text, (WIDTH//2 - game_over_text.get_width()//2, HEIGHT//2 - game_over_text.get_height()//2))
+        WIN.blit(final_score_text, (10,10))
+        WIN.blit(current_round, (WIN.get_width() - round.get_width() - 10, 10))
+        WIN.blit(restart_text1, (WIDTH//2 - restart_text1.get_width()//2, HEIGHT//2 + game_over_text.get_height()))
+        WIN.blit(restart_text2, (WIDTH//2 - restart_text2.get_width()//2, HEIGHT//2 + restart_text1.get_height()
+                                 + game_over_text.get_height()))
+        pygame.display.update()
 
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
