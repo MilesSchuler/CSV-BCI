@@ -3,6 +3,7 @@ import mysql.connector
 
 from LiveCollectionData.muse_utility import stream, list_muses
 import asyncio
+import time
 from time import sleep
 from pylsl import resolve_byprop
 from threading import Thread
@@ -41,6 +42,10 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
+
+# sky colors
+morning_color = (179, 246, 255)  # light blue
+night_color = (25, 25, 112)  # dark blue
 
 # Fonts
 FONT = pygame.font.Font('CSV_BCI/Fonts/SundayMilk.ttf', 30)
@@ -138,7 +143,7 @@ def main_menu():
     active = False 
 
     while run: 
-        WIN.fill((89, 247, 239))
+        WIN.fill(morning_color)
         msg = FONT.render("ENTER NICKNAME!", True, TEXT_COLOR)
         WIN.blit(msg, ((WIN.get_width() - msg.get_width())/2, 150))
 
@@ -178,8 +183,12 @@ def main_menu():
 
 # Main function
 def start_game_loop():
+    global morning_color
+    global night_color
+
     global roundnum
     roundnum += 1
+    start_time = pygame.time.get_ticks()
 
     global bird
     bird = Bird()
@@ -190,6 +199,27 @@ def start_game_loop():
     running = True
     while running:
         clock.tick(60)
+
+        # Finding color based on "time"
+        def sky_color():
+            elapsed_time = pygame.time.get_ticks()
+            total_time = 120000  # 2 min for a complete color cycle
+            t = (elapsed_time % (total_time / 2)) / total_time  # Fraction of the way through the half cycle
+
+            if (elapsed_time % total_time) < (total_time / 2): # Less than halfway through cycle
+                # Go from day to night
+                return (int(morning_color[0] + (night_color[0] - morning_color[0]) * t),
+                        int(morning_color[1] + (night_color[1] - morning_color[1]) * t),
+                        int(morning_color[2] + (night_color[2] - morning_color[2]) * t)) 
+            else: # Halfway or more through cycle
+                # Go from night to day
+                return (int(night_color[0] + (morning_color[0] - night_color[0]) * t),
+                        int(night_color[1] + (morning_color[1] - night_color[1]) * t),
+                        int(night_color[2] + (morning_color[2] - night_color[2]) * t)) 
+
+        color = sky_color()
+        WIN.fill(color)
+        pygame.display.update()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -215,7 +245,6 @@ def start_game_loop():
         if bird.y > HEIGHT or bird.y < 0:
             running = False
 
-        WIN.fill(WHITE)
         bird.draw()
         for pipe in pipes:
             pipe.draw()
@@ -256,6 +285,7 @@ def start_game_loop():
                 elif event.key == pygame.K_RETURN:
                     running = True
                     start_game_loop()
+    
 
 PREVIOUS = 25
 previous = []
