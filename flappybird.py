@@ -48,7 +48,7 @@ morning_color = (179, 246, 255)  # light blue
 night_color = (25, 25, 112)  # dark blue
 
 # Fonts
-FONT = pygame.font.Font('CSV_BCI/Fonts/SundayMilk.ttf', 30)
+FONT = pygame.font.Font('SundayMilk.ttf', 30)
 
 TEXT_COLOR = (255, 245, 48)
 
