@@ -81,6 +81,35 @@ class Bird:
     def draw(self):
         pygame.draw.rect(WIN, BLACK, self.image)
 
+# Coin class
+class Coin:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.image = pygame.Rect(self.x, self.y, 20, 20)
+
+    def move(self):
+        self.x -= 2
+        self.image.x = self.x
+
+    def draw(self):
+        pygame.draw.rect(WIN, RED, self.image)
+
+# generating coins that don't overlap with pipes
+def generate_coins(pipes):
+    while True:
+        coin_x = random.randint(WIDTH, WIDTH + 800)
+        coin_y = random.randint(100, HEIGHT - 100)
+        new_coin = pygame.Rect(coin_x, coin_y, 20, 20)
+        overlap = False
+        for pipe in pipes:
+            if new_coin.colliderect(pipe.top_pipe) or new_coin.colliderect(pipe.bottom_pipe):
+                overlap = True
+                break
+        if not overlap:
+            return Coin(coin_x, coin_y)
+        
+
 # Pipe class
 class Pipe:
     def __init__(self, x):
@@ -194,6 +223,7 @@ def start_game_loop():
     global bird
     bird = Bird()
     pipes = [Pipe(WIDTH + i * 250) for i in range(2)]
+    coins = [generate_coins(pipes) for _ in range(5)]
     clock = pygame.time.Clock()
     score = 0
 
@@ -222,7 +252,6 @@ def start_game_loop():
 
         color = sky_color()
         WIN.fill(color)
-        pygame.display.update()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -245,12 +274,26 @@ def start_game_loop():
                 pipe.passed = True
                 score += 1
 
+        for coin in coins:
+            coin.move()
+            if coin.x < 0:
+                coins.remove(coin)
+                coins.append(Coin(random.randint(WIDTH, WIDTH + 800), random.randint(100, HEIGHT - 100)))
+
+            if bird.image.colliderect(coin.image):
+                coins.remove(coin)
+                coins.append(Coin(random.randint(WIDTH, WIDTH + 800), random.randint(100, HEIGHT - 100)))
+                score += 10
+
         if bird.y > HEIGHT or bird.y < 0:
             running = False
 
         bird.draw()
         for pipe in pipes:
             pipe.draw()
+        for coin in coins:
+            coin.draw()
+        
         score_text = FONT.render(f"Score: {score}", True, BLACK)
         WIN.blit(score_text, (10, 10))
 
