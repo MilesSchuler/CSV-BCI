@@ -25,8 +25,7 @@ mydb = mysql.connector.connect(
 
 cursor = mydb.cursor()
 
-username = 'Player 1'
-
+username = ''
 
 # flappybird.py can't find training_constants on my laptop, using place, this is the placeholder (commented out):
 # CHUNK_LENGTH = 2
@@ -49,7 +48,7 @@ morning_color = (179, 246, 255)  # light blue
 night_color = (25, 25, 112)  # dark blue
 
 # Fonts
-FONT = pygame.font.Font('SundayMilk.ttf', 40)
+FONT = pygame.font.Font('CSV_BCI/Fonts/SundayMilk.ttf', 30)
 
 TEXT_COLOR = (255, 245, 48)
 
@@ -162,7 +161,7 @@ def main_menu():
 
     username = ''
 
-    input_rect = pygame.Rect(100, 200, 300, 35)
+    input_rect = pygame.Rect(120, 200, 300, 35)
     enter_rect = pygame.Rect(305, 200, 35, 35)
 
     color_active = pygame.Color('lightskyblue3')
@@ -211,6 +210,24 @@ def main_menu():
         pygame.display.update()
 
 
+# Finding color based on "time"
+def sky_color():
+    elapsed_time = pygame.time.get_ticks()
+    total_time = 120000  # 2 min for a complete color cycle
+    t = (elapsed_time % (total_time / 2)) / total_time  # Fraction of the way through the half cycle
+
+    if (elapsed_time % total_time) < (total_time / 2): # Less than halfway through cycle
+        # Go from day to night
+        return (int(morning_color[0] + (night_color[0] - morning_color[0]) * t),
+                int(morning_color[1] + (night_color[1] - morning_color[1]) * t),
+                int(morning_color[2] + (night_color[2] - morning_color[2]) * t)) 
+    else: # Halfway or more through cycle
+        # Go from night to day
+        return (int(night_color[0] + (morning_color[0] - night_color[0]) * t),
+                int(night_color[1] + (morning_color[1] - night_color[1]) * t),
+                int(night_color[2] + (morning_color[2] - night_color[2]) * t)) 
+
+
 # Main function
 def start_game_loop():
     global morning_color
@@ -229,26 +246,7 @@ def start_game_loop():
 
     running = True
     while running:
-        draw_text("YOU LOSE", 160, 250)
-
         clock.tick(60)
-
-        # Finding color based on "time"
-        def sky_color():
-            elapsed_time = pygame.time.get_ticks()
-            total_time = 120000  # 2 min for a complete color cycle
-            t = (elapsed_time % (total_time / 2)) / total_time  # Fraction of the way through the half cycle
-
-            if (elapsed_time % total_time) < (total_time / 2): # Less than halfway through cycle
-                # Go from day to night
-                return (int(morning_color[0] + (night_color[0] - morning_color[0]) * t),
-                        int(morning_color[1] + (night_color[1] - morning_color[1]) * t),
-                        int(morning_color[2] + (night_color[2] - morning_color[2]) * t)) 
-            else: # Halfway or more through cycle
-                # Go from night to day
-                return (int(night_color[0] + (morning_color[0] - night_color[0]) * t),
-                        int(night_color[1] + (morning_color[1] - night_color[1]) * t),
-                        int(night_color[2] + (morning_color[2] - night_color[2]) * t)) 
 
         color = sky_color()
         WIN.fill(color)
@@ -303,6 +301,8 @@ def start_game_loop():
         pygame.display.update()
 
     
+    # True if they broke old high score, false if they did not. 
+    new_high = update_high_score(score) 
 
     while running == False:
         clock.tick(60)
@@ -368,6 +368,29 @@ def analyze_muse(data, timestamp):
         print('blink')
         bird.flap()
 
+
+# Takes in the score player just had and updates database if it's a new high score
+# Returns true if they had a new high score and false if they didn't 
+
+def update_high_score(score):
+    query = "SELECT * FROM BCI_users WHERE name = %s AND high_score < %s"
+    vals = (username, score)
+
+    cursor.execute(query, vals)
+
+    query_return = cursor.fetchall()
+
+    if len(query_return) > 0:
+        query = "UPDATE `BCI_users` SET `high_score`= %s WHERE name = %s"
+        print(username)
+        vals = (score,username)
+
+        cursor.execute(query, vals)
+        mydb.commit()
+        
+        return True
+    
+    return False 
 
 # streaming_thread = Thread(name="Streaming Thread", target=start_stream_thread)
 # streaming_thread.start()
