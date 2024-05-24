@@ -181,6 +181,24 @@ def main_menu():
         pygame.display.update()
 
 
+# Finding color based on "time"
+def sky_color():
+    elapsed_time = pygame.time.get_ticks()
+    total_time = 120000  # 2 min for a complete color cycle
+    t = (elapsed_time % (total_time / 2)) / total_time  # Fraction of the way through the half cycle
+
+    if (elapsed_time % total_time) < (total_time / 2): # Less than halfway through cycle
+        # Go from day to night
+        return (int(morning_color[0] + (night_color[0] - morning_color[0]) * t),
+                int(morning_color[1] + (night_color[1] - morning_color[1]) * t),
+                int(morning_color[2] + (night_color[2] - morning_color[2]) * t)) 
+    else: # Halfway or more through cycle
+        # Go from night to day
+        return (int(night_color[0] + (morning_color[0] - night_color[0]) * t),
+                int(night_color[1] + (morning_color[1] - night_color[1]) * t),
+                int(night_color[2] + (morning_color[2] - night_color[2]) * t)) 
+
+
 # Main function
 def start_game_loop():
     global morning_color
@@ -200,26 +218,8 @@ def start_game_loop():
     while running:
         clock.tick(60)
 
-        # Finding color based on "time"
-        def sky_color():
-            elapsed_time = pygame.time.get_ticks()
-            total_time = 120000  # 2 min for a complete color cycle
-            t = (elapsed_time % (total_time / 2)) / total_time  # Fraction of the way through the half cycle
-
-            if (elapsed_time % total_time) < (total_time / 2): # Less than halfway through cycle
-                # Go from day to night
-                return (int(morning_color[0] + (night_color[0] - morning_color[0]) * t),
-                        int(morning_color[1] + (night_color[1] - morning_color[1]) * t),
-                        int(morning_color[2] + (night_color[2] - morning_color[2]) * t)) 
-            else: # Halfway or more through cycle
-                # Go from night to day
-                return (int(night_color[0] + (morning_color[0] - night_color[0]) * t),
-                        int(night_color[1] + (morning_color[1] - night_color[1]) * t),
-                        int(night_color[2] + (morning_color[2] - night_color[2]) * t)) 
-
         color = sky_color()
         WIN.fill(color)
-        pygame.display.update()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
