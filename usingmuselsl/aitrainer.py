@@ -74,7 +74,7 @@ model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=lr_scheduler),
               metrics=['accuracy'])
 
 # Train the model with validation split
-history = model.fit(np.array(train_x), np.array(train_y), epochs=6)
+history = model.fit(np.array(train_x), np.array(train_y), epochs=4)
 
 # Save the trained model
-model.save('usingmuselsl/epic_ai_v10.keras')
+model.save('usingmuselsl/epic_ai_v12.keras')

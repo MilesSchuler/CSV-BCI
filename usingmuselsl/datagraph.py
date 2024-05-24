@@ -18,7 +18,7 @@ DEJITTER = True
 FILENAME = "usingmuselsl/filtered_data_" + strftime("%Y-%m-%d_%H-%M-%S", gmtime()) + ".csv"
 started = False
  
-DATA_COLLECTION = True
+DATA_COLLECTION = False
 
 # find stream
 print("looking for an EEG stream...")
@@ -61,7 +61,7 @@ def get_data():
     if DATA_COLLECTION:
         f = open(FILENAME, 'a')
     else:
-        model = tf.keras.models.load_model('usingmuselsl/epic_ai_v9.keras')
+        model = tf.keras.models.load_model('usingmuselsl/epic_ai_v12.keras')
 
     while started:
         samples, timestamps = inlet.pull_chunk(timeout=0.05, max_samples=MAX_SAMPLES)
