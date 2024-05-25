@@ -2,19 +2,28 @@
 import mysql.connector
 
 from LiveCollectionData.muse_utility import stream, list_muses
-import asyncio
-import time
-from time import sleep
-from pylsl import resolve_byprop
-from threading import Thread
 from LiveCollectionData.streamer import Streamer
 from muselsl.constants import LSL_SCAN_TIMEOUT
 import sys
 import numpy as np
+
+from scipy.signal import lfilter, lfilter_zi, firwin
+from usingmuselsl.training_constants import CHUNK_LENGTH, BLINK_THRESHOLD
+from time import sleep
+from pylsl import StreamInlet, resolve_byprop
+from threading import Thread
+from time import gmtime, strftime
+
 import tensorflow as tf
 
 import pygame
 import random
+
+USE_BLINK_DETECTION = True
+MAX_SAMPLES = 24
+DEJITTER = True
+ai_blink_timestamps = []
+blink_calls = []
 
 mydb = mysql.connector.connect(
     host = "mysql.2324.lakeside-cs.org",
@@ -263,7 +272,13 @@ def start_game_loop():
                 running = False
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
-                    bird.flap()
+                    if not USE_BLINK_DETECTION:
+                        bird.flap()
+
+        # DO BLINK DETECTION HERE
+        if USE_BLINK_DETECTION:
+            if blink_calls[-1] == "blink":
+                bird.flap()
 
         bird.update()
 
@@ -341,41 +356,6 @@ def start_game_loop():
 PREVIOUS = 25
 previous = []
 
-def start_stream_thread():
-    streams = resolve_byprop('type', 'EEG', timeout=LSL_SCAN_TIMEOUT)
-    if len(streams) == 0:
-        raise(RuntimeError("Can't find EEG stream."))
-    print("Start acquiring data.")
-
-    streamer = Streamer(streams[0], analyze_muse)
-    streamer.start(1/60)
-
-def chunk_generator(arr, length, overlap):
-    for i in range(0, len(arr), length - overlap):
-        yield arr[i:i + length]
-
-def analyze_muse(data, timestamp):
-    global previous
-    global bird
-
-    tp9 = 0
-
-    for row in data:
-        tp9 += row[0]
-    
-    tp9 = tp9/12
-
-    if len(previous) < 5:
-        previous.append(tp9)
-    else:
-        previous.pop(0)
-        previous.append(tp9)
-    
-    if previous[-1] < (previous[0] - 120):
-        print('blink')
-        bird.flap()
-
-
 # Takes in the score player just had and updates database if it's a new high score
 # Returns true if they had a new high score and false if they didn't 
 
@@ -399,7 +379,99 @@ def update_high_score(score):
     
     return False 
 
-# streaming_thread = Thread(name="Streaming Thread", target=start_stream_thread)
-# streaming_thread.start()
+def ai_analysis_thread():
+    global ai_blink_timestamps, blink_calls
+
+    MAX_SAMPLES = 24
+    WINDOW_SIZE = 5
+    BLINK_RADIUS = 0.25
+    DEJITTER = True
+
+    # find stream
+    print("looking for an EEG stream...")
+    streams = resolve_byprop('type', 'EEG', timeout=2)
+    if len(streams) == 0:
+        raise Exception("Can't find EEG stream")
+    print("Start acquiring data")
+    inlet = StreamInlet(streams[0], max_chunklen=MAX_SAMPLES)
+    eeg_time_correction = inlet.time_correction()
+    print("looking for a Markers stream...")
+    marker_streams = resolve_byprop('type', 'Markers', timeout=2)
+    if marker_streams:
+        inlet_marker = StreamInlet(marker_streams[0])
+        marker_time_correction = inlet_marker.time_correction()
+    else:
+        inlet_marker = False
+        print("Can't find Markers stream")
+
+    # get basic information
+    info = inlet.info()
+    SAMPLING_FREQUENCY = info.nominal_srate(); assert SAMPLING_FREQUENCY == 256
+    SAMPLES_COUNT = int(SAMPLING_FREQUENCY * WINDOW_SIZE)
+    CHANNELS_COUNT = info.channel_count()
+
+    # bandpass filter from 1 Hz to 40 Hz (i don't really understand this)
+    BANDPASS_FILTER = firwin(32, np.array([1, 40]) / (SAMPLING_FREQUENCY / 2.), width=0.05, pass_zero=False)
+    FEEDBACK_COEFFICIENTS = [1.0]
+    INITIAL_FILTER = lfilter_zi(BANDPASS_FILTER, FEEDBACK_COEFFICIENTS)
+    filter_state = np.tile(INITIAL_FILTER, (CHANNELS_COUNT, 1)).transpose()
+
+    # set up lists for data streams
+    times = np.arange(-WINDOW_SIZE, 0, 1/SAMPLING_FREQUENCY)
+    data = np.zeros((SAMPLES_COUNT, CHANNELS_COUNT))
+    data_filtered = np.zeros((SAMPLES_COUNT, CHANNELS_COUNT))
+
+    model = tf.keras.models.load_model('usingmuselsl/epic_ai_v12.keras')
+    while True:
+        samples, timestamps = inlet.pull_chunk(timeout=0.05, max_samples=MAX_SAMPLES)
+        if timestamps:
+            if DEJITTER:
+                timestamps = np.float64(np.arange(len(timestamps)))
+                timestamps /= SAMPLING_FREQUENCY
+                timestamps += times[-1] + 1. / SAMPLING_FREQUENCY
+
+            # add new timestamps to times list
+            times = np.concatenate([times, np.atleast_1d(timestamps)])
+            SAMPLES_COUNT = int(SAMPLING_FREQUENCY * WINDOW_SIZE)
+            # remove old timestamps from the front of times
+            times = times[-SAMPLES_COUNT:]
+
+            # add new samples to data list
+            data = np.vstack([data, samples])
+            # remove old samples from the fromt of data
+            data = data[-SAMPLES_COUNT:]
+
+            # filter out noise
+            filt_samples, filter_state = lfilter(BANDPASS_FILTER, FEEDBACK_COEFFICIENTS, samples, axis=0, zi=filter_state)
+
+            # add new filtered data to data_filtered
+            data_filtered = np.vstack([data_filtered, filt_samples])
+            # remove old filtered data from the front of data_filtered
+            data_filtered = data_filtered[-SAMPLES_COUNT:]
+
+            # evaluate AI
+            data = data_filtered[-CHUNK_LENGTH:]
+            data_truncated = np.delete(data, -1, axis=1)
+
+            prediction = model.predict(np.array([data_truncated]), verbose=0)
+
+            if prediction[0][0] >= BLINK_THRESHOLD:
+                # adjust for delay MAYBE
+                print("blink")
+                ai_blink_timestamps.append(times[-1])
+                blink_calls.append("blink")
+            else:
+                print("no blink")
+                blink_calls.append("no blink")
+        else:
+            sleep(0.1)
+
+if USE_BLINK_DETECTION:
+    ai_thread = Thread(target=ai_analysis_thread)
+    ai_thread.daemon = True
+    ai_thread.start()
+
+sleep(10)
+
 main_menu()
 
