@@ -240,15 +240,12 @@ def main_menu():
                     username = username[:-1]
                 elif len(username) < 10 and active == True:
                     username += event.unicode
-        print("cycle")
         cursor_timer = pygame.time.get_ticks() % CURSOR_CYCLE
         # Update cursor visibility
         if cursor_timer < (CURSOR_CYCLE) / 2:
             cursor_visible = True
-            print("cursor_visible")
         else:
             cursor_visible = False
-            print("cursor invisible")
 
         pygame.draw.rect(WIN, color_input_rect, input_rect, 2, border_radius=10)
         pygame.draw.rect(WIN, color_enter_rect , enter_rect, border_radius = 10)
