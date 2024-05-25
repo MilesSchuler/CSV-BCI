@@ -48,7 +48,7 @@ morning_color = (179, 246, 255)  # light blue
 night_color = (25, 25, 112)  # dark blue
 
 # Fonts
-FONT = pygame.font.Font('CSV_BCI/Fonts/SundayMilk.ttf', 30)
+FONT = pygame.font.Font('SundayMilk.ttf', 30)
 
 TEXT_COLOR = (255, 245, 48)
 
@@ -216,16 +216,23 @@ def sky_color():
     total_time = 120000  # 2 min for a complete color cycle
     t = (elapsed_time % (total_time / 2)) / total_time  # Fraction of the way through the half cycle
 
-    if (elapsed_time % total_time) < (total_time / 2): # Less than halfway through cycle
+    if (elapsed_time % total_time) < (total_time / 4): # Less than a fourth through cycle
+        # Daytime
+        return (morning_color)
+    elif (elapsed_time % total_time) < (total_time / 2): # Halfway
         # Go from day to night
-        return (int(morning_color[0] + (night_color[0] - morning_color[0]) * t),
-                int(morning_color[1] + (night_color[1] - morning_color[1]) * t),
-                int(morning_color[2] + (night_color[2] - morning_color[2]) * t)) 
-    else: # Halfway or more through cycle
+        return (int(morning_color[0] + (night_color[0] - morning_color[0]) * t * 2),
+                int(morning_color[1] + (night_color[1] - morning_color[1]) * t * 2),
+                int(morning_color[2] + (night_color[2] - morning_color[2]) * t * 2)) 
+    elif (elapsed_time % total_time) < ((3 *total_time) / 4): # 3/4
+        # Night
+        return (night_color)
+    else: # last quarter of cycle
         # Go from night to day
-        return (int(night_color[0] + (morning_color[0] - night_color[0]) * t),
-                int(night_color[1] + (morning_color[1] - night_color[1]) * t),
-                int(night_color[2] + (morning_color[2] - night_color[2]) * t)) 
+        return (int(night_color[0] - (night_color[0] - morning_color[0]) * t * 2),
+                int(night_color[1] - (night_color[1] - morning_color[1]) * t * 2),
+                int(night_color[2] - (night_color[2] - morning_color[2]) * t * 2)) 
+        
 
 
 # Main function
