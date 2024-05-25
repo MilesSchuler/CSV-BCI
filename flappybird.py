@@ -12,14 +12,18 @@ from usingmuselsl.training_constants import CHUNK_LENGTH, BLINK_THRESHOLD
 from time import sleep
 from pylsl import StreamInlet, resolve_byprop
 from threading import Thread
-from time import gmtime, strftime
+from time import gmtime, strftime, time
 
 import tensorflow as tf
 
 import pygame
 import random
 
-USE_BLINK_DETECTION = True
+# Setting to true allows bird to ignore all pipes for testing purposes
+testing = False
+
+# Setting to False for testing purposes
+USE_BLINK_DETECTION = False
 MAX_SAMPLES = 24
 DEJITTER = True
 ai_blink_timestamps = []
@@ -53,13 +57,25 @@ RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 
 # sky colors
-morning_color = (179, 246, 255)  # light blue
-night_color = (25, 25, 112)  # dark blue
+
+# color palettes
+morning_palette = [(222, 229, 255), # sky
+                   (128, 67, 41), # pipes
+                   (110, 41, 128), # bird
+                   (41, 59, 128), # text
+                   (218, 221, 109) # coins
+                   ]
+night_palette = [(41, 59, 128), # sky
+                 (255, 232, 222), # pipes
+                 (248, 222, 255), # bird
+                 (222, 229, 255), # text
+                 (254, 255, 219) # coins
+                 ]
 
 # Fonts
 FONT = pygame.font.Font('SundayMilk.ttf', 30)
 
-TEXT_COLOR = (255, 245, 48)
+TEXT_COLOR = morning_palette[3]
 
 # Constants
 GRAVITY = 0.25
@@ -85,9 +101,10 @@ class Bird:
         self.velocity += GRAVITY
         self.y += self.velocity
         self.image.y = self.y
+        self.draw()
 
     def draw(self):
-        pygame.draw.rect(WIN, BLACK, self.image)
+        pygame.draw.rect(WIN, palette_color(2), self.image)
 
 # Coin class
 class Coin:
@@ -99,9 +116,10 @@ class Coin:
     def move(self):
         self.x -= 2
         self.image.x = self.x
+        self.draw()
 
     def draw(self):
-        pygame.draw.rect(WIN, RED, self.image)
+        pygame.draw.rect(WIN, palette_color(4), self.image)
 
 # generating coins that don't overlap with pipes
 def generate_coins(pipes):
@@ -111,7 +129,11 @@ def generate_coins(pipes):
         new_coin = pygame.Rect(coin_x, coin_y, 20, 20)
         overlap = False
         for pipe in pipes:
-            if new_coin.colliderect(pipe.top_pipe) or new_coin.colliderect(pipe.bottom_pipe):
+            # Buffer rectangles for nicer coin placement
+            buffer_top_pipe = pipe.top_pipe.inflate(10, 10)
+            buffer_bottom_pipe = pipe.bottom_pipe.inflate(10, 10) 
+
+            if (new_coin.colliderect(buffer_top_pipe) or new_coin.colliderect(buffer_bottom_pipe)):
                 overlap = True
                 break
         if not overlap:
@@ -131,13 +153,14 @@ class Pipe:
         self.x -= 2
         self.top_pipe.x = self.x
         self.bottom_pipe.x = self.x
+        self.draw()
 
     def draw(self):
-        pygame.draw.rect(WIN, GREEN, self.top_pipe)
-        pygame.draw.rect(WIN, GREEN, self.bottom_pipe)
+        pygame.draw.rect(WIN, palette_color(1), self.top_pipe)
+        pygame.draw.rect(WIN, palette_color(1), self.bottom_pipe)
 
-def draw_text(text, x, y):
-    img = FONT.render(text, True, TEXT_COLOR)
+def draw_text(text, x, y, color):
+    img = FONT.render(text, True, color)
     WIN.blit(img, (x, y))
 
 def add_username(new_username):
@@ -166,22 +189,31 @@ def add_username(new_username):
         print("We added it gang")
 
 def main_menu():
+    global morning_palette
+    global night_palette
+
     run = True
 
     username = ''
 
+    # cursor stuff
+    cursor_visible = True
+    CURSOR_CYCLE = 700
+    cursor_timer = 0
+    
+
     input_rect = pygame.Rect(120, 200, 300, 35)
     enter_rect = pygame.Rect(305, 200, 35, 35)
 
-    color_active = pygame.Color('lightskyblue3')
-    color_passive = pygame.Color('black')
+    color_active = morning_palette[2]
+    color_passive = morning_palette[3]
 
     color_input_rect = color_passive
-    color_enter_rect = pygame.Color('grey')
+    color_enter_rect = morning_palette[3]
     active = False 
 
     while run: 
-        WIN.fill(morning_color)
+        WIN.fill(morning_palette[0])
         msg = FONT.render("ENTER NICKNAME!", True, TEXT_COLOR)
         WIN.blit(msg, ((WIN.get_width() - msg.get_width())/2, 150))
 
@@ -208,11 +240,26 @@ def main_menu():
                     username = username[:-1]
                 elif len(username) < 10 and active == True:
                     username += event.unicode
+        print("cycle")
+        cursor_timer = pygame.time.get_ticks() % CURSOR_CYCLE
+        # Update cursor visibility
+        if cursor_timer < (CURSOR_CYCLE) / 2:
+            cursor_visible = True
+            print("cursor_visible")
+        else:
+            cursor_visible = False
+            print("cursor invisible")
 
         pygame.draw.rect(WIN, color_input_rect, input_rect, 2, border_radius=10)
         pygame.draw.rect(WIN, color_enter_rect , enter_rect, border_radius = 10)
         text_surface = FONT.render(username, True, (0, 0, 0))
         WIN.blit(text_surface, (input_rect.x + 5, input_rect.y + 5)) 
+
+        # Draw cursor if visible and input box is active
+        if cursor_visible and active:
+            cursor_x = input_rect.x + text_surface.get_width() + 5
+            cursor_rect = pygame.Rect(cursor_x, input_rect.y + 5, 2, text_surface.get_height())
+            pygame.draw.rect(WIN, color_active, cursor_rect)
 
         input_rect.w = max(150, text_surface.get_width() + 10)
 
@@ -220,34 +267,41 @@ def main_menu():
 
 
 # Finding color based on "time"
-def sky_color():
+def palette_color(num):
+    global morning_palette
+    global night_palette
+
     elapsed_time = pygame.time.get_ticks()
     total_time = 120000  # 2 min for a complete color cycle
-    t = (elapsed_time % (total_time / 2)) / total_time  # Fraction of the way through the half cycle
+    cycle_time = elapsed_time % total_time
+    t = cycle_time / total_time  # Fraction of the way through the cycle
 
-    if (elapsed_time % total_time) < (total_time / 4): # Less than a fourth through cycle
+    if cycle_time < (total_time / 4): # First 4th of the cycle
         # Daytime
-        return (morning_color)
-    elif (elapsed_time % total_time) < (total_time / 2): # Halfway
-        # Go from day to night
-        return (int(morning_color[0] + (night_color[0] - morning_color[0]) * t * 2),
-                int(morning_color[1] + (night_color[1] - morning_color[1]) * t * 2),
-                int(morning_color[2] + (night_color[2] - morning_color[2]) * t * 2)) 
-    elif (elapsed_time % total_time) < ((3 *total_time) / 4): # 3/4
+        return morning_palette[num]
+    elif cycle_time < (total_time / 2):
+        # Transition to night
+        return (interpolate_color(morning_palette[num], night_palette[num], (t - 0.25) * 4))
+    elif cycle_time < (3 * (total_time) / 4):
         # Night
-        return (night_color)
-    else: # last quarter of cycle
-        # Go from night to day
-        return (int(night_color[0] - (night_color[0] - morning_color[0]) * t * 2),
-                int(night_color[1] - (night_color[1] - morning_color[1]) * t * 2),
-                int(night_color[2] - (night_color[2] - morning_color[2]) * t * 2)) 
-        
+        return night_palette[num]
+    else:
+        # Transition to day
+        return (interpolate_color(night_palette[num], morning_palette[num], (t - 0.75) * 4))
 
+        
+# Interpolating from color 1 to 2
+def interpolate_color(color1, color2, t):
+    # t is in [0,1]
+    return (int(color1[0] + (color2[0] - color1[0]) * t),
+            int(color1[1] + (color2[1] - color1[1]) * t),
+            int(color1[2] + (color2[2] - color1[2]) * t))
 
 # Main function
 def start_game_loop():
-    global morning_color
-    global night_color
+    global morning_palette
+    global night_palette
+    global testing
 
     global roundnum
     roundnum += 1
@@ -264,7 +318,7 @@ def start_game_loop():
     while running:
         clock.tick(60)
 
-        color = sky_color()
+        color = palette_color(0)
         WIN.fill(color)
 
         for event in pygame.event.get():
@@ -288,7 +342,7 @@ def start_game_loop():
                 pipes.remove(pipe)
                 pipes.append(Pipe(WIDTH))
 
-            if bird.image.colliderect(pipe.top_pipe) or bird.image.colliderect(pipe.bottom_pipe):
+            if (bird.image.colliderect(pipe.top_pipe) or bird.image.colliderect(pipe.bottom_pipe)) and testing == False:
                 running = False
             elif not pipe.passed and pipe.top_pipe.right < bird.x:
                 pipe.passed = True
@@ -314,10 +368,10 @@ def start_game_loop():
         for coin in coins:
             coin.draw()
         
-        score_text = FONT.render(f"Score: {score}", True, BLACK)
+        score_text = FONT.render(f"Score: {score}", True, palette_color(3))
         WIN.blit(score_text, (10, 10))
 
-        round = FONT.render(f"Round: {roundnum}", True, BLACK)
+        round = FONT.render(f"Round: {roundnum}", True, palette_color(3))
         WIN.blit(round, (WIN.get_width() - round.get_width() - 10, 10))
 
         pygame.display.update()
@@ -329,12 +383,12 @@ def start_game_loop():
     while running == False:
         clock.tick(60)
 
-        game_over_text = FONT.render("Game Over!", True, RED)
-        restart_text1 = FONT.render("Press ENTER to restart", True, BLACK)
-        restart_text2 = FONT.render("Press ESC to quit", True, BLACK)
-        final_score_text = FONT.render(f"Score: {score}", True, BLACK)
-        current_round = FONT.render(f"Round: {roundnum}", True, BLACK)
-        WIN.fill(WHITE)
+        game_over_text = FONT.render("Game Over!", True, morning_palette[2])
+        restart_text1 = FONT.render("Press ENTER to restart", True, morning_palette[3])
+        restart_text2 = FONT.render("Press ESC to quit", True, morning_palette[3])
+        final_score_text = FONT.render(f"Score: {score}", True, morning_palette[3])
+        current_round = FONT.render(f"Round: {roundnum}", True, morning_palette[3])
+        WIN.fill(morning_palette[0])
         WIN.blit(game_over_text, (WIDTH//2 - game_over_text.get_width()//2, HEIGHT//2 - game_over_text.get_height()//2))
         WIN.blit(final_score_text, (10,10))
         WIN.blit(current_round, (WIN.get_width() - round.get_width() - 10, 10))
