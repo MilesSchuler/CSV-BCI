@@ -199,9 +199,10 @@ def main_menu():
     CURSOR_CYCLE = 700
     cursor_timer = 0
     
+    button_text = FONT.render('PLAY',True, (0,0,0))
 
     input_rect = pygame.Rect(120, 200, 300, 35)
-    enter_rect = pygame.Rect(305, 200, 35, 35)
+    play_button = pygame.Rect(300, 200, button_text.get_width() + 10, 35)
 
     color_active = morning_palette[2]
     color_passive = morning_palette[3]
@@ -220,7 +221,7 @@ def main_menu():
                 if input_rect.collidepoint(event.pos):
                     active = True
                     color_input_rect = color_active
-                elif enter_rect.collidepoint(event.pos) and len(username) > 0:
+                elif play_button.collidepoint(event.pos) and len(username) > 0:
                     add_username(username)
                     start_game_loop()
                 else:
@@ -246,9 +247,12 @@ def main_menu():
             cursor_visible = False
 
         pygame.draw.rect(WIN, color_input_rect, input_rect, 2, border_radius=10)
-        pygame.draw.rect(WIN, color_enter_rect , enter_rect, border_radius = 10)
+        pygame.draw.rect(WIN, color_enter_rect, play_button, 2, border_radius = 10)
+
         text_surface = FONT.render(username, True, (0, 0, 0))
         WIN.blit(text_surface, (input_rect.x + 5, input_rect.y + 5)) 
+
+        WIN.blit(button_text, (play_button.x + 5, play_button.y + 5))
 
         # Draw cursor if visible and input box is active
         if cursor_visible and active:
@@ -259,7 +263,6 @@ def main_menu():
         input_rect.w = max(150, text_surface.get_width() + 10)
 
         pygame.display.update()
-
 
 # Finding color based on "time"
 def palette_color(num):
@@ -526,8 +529,6 @@ if USE_BLINK_DETECTION:
     ai_thread = Thread(target=ai_analysis_thread)
     ai_thread.daemon = True
     ai_thread.start()
-
-sleep(10)
 
 main_menu()
 
