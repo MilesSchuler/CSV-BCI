@@ -73,7 +73,8 @@ night_palette = [(41, 59, 128), # sky
                  ]
 
 # Fonts
-FONT = pygame.font.Font('SundayMilk.ttf', 30)
+FONT = pygame.font.Font('CSV_BCI/Fonts/SundayMilk.ttf', 30)
+BIG_FONT = pygame.font.Font('CSV_BCI/Fonts/SundayMilk.ttf', 50)
 
 TEXT_COLOR = morning_palette[3]
 
@@ -176,7 +177,6 @@ def add_username(new_username):
     if len(potential_username) > 0:
         # assuming 'name' is the first column in the database
         username = potential_username[0][0]
-        print("We found it. ")
     else:
         query = 'INSERT INTO `BCI_users`(`name`, `high_score`) VALUES (%s,%s)'
         vals = (new_username, 0)
@@ -185,8 +185,6 @@ def add_username(new_username):
         mydb.commit()
 
         username = new_username
-
-        print("We added it gang")
 
 def main_menu():
     global morning_palette
@@ -380,18 +378,25 @@ def start_game_loop():
     while running == False:
         clock.tick(60)
 
-        game_over_text = FONT.render("Game Over!", True, morning_palette[2])
-        restart_text1 = FONT.render("Press ENTER to restart", True, morning_palette[3])
-        restart_text2 = FONT.render("Press ESC to quit", True, morning_palette[3])
-        final_score_text = FONT.render(f"Score: {score}", True, morning_palette[3])
-        current_round = FONT.render(f"Round: {roundnum}", True, morning_palette[3])
-        WIN.fill(morning_palette[0])
-        WIN.blit(game_over_text, (WIDTH//2 - game_over_text.get_width()//2, HEIGHT//2 - game_over_text.get_height()//2))
+        congrats_text = ''
+        if new_high:
+            congrats_text = FONT.render(f"NEW HIGH SCORE: {score}", True, BLACK)
+        
+        game_over_text = BIG_FONT.render("Game Over!", True, RED)
+        restart_text1 = FONT.render("Press ENTER to restart", True, BLACK)
+        restart_text2 = FONT.render("Press ESC to quit", True, BLACK)
+        final_score_text = FONT.render(f"Score: {score}", True, BLACK)
+        current_round = FONT.render(f"Round: {roundnum}", True, BLACK)
+        WIN.fill(WHITE)
+        if new_high:
+            WIN.blit(congrats_text, (WIDTH//2 - congrats_text.get_width()//2, HEIGHT//2 - congrats_text.get_height()//2))
+        
+        WIN.blit(game_over_text, (WIDTH//2 - game_over_text.get_width()//2, HEIGHT/2 - game_over_text.get_height() - 30))
         WIN.blit(final_score_text, (10,10))
         WIN.blit(current_round, (WIN.get_width() - round.get_width() - 10, 10))
         WIN.blit(restart_text1, (WIDTH//2 - restart_text1.get_width()//2, HEIGHT//2 + game_over_text.get_height()))
-        WIN.blit(restart_text2, (WIDTH//2 - restart_text2.get_width()//2, HEIGHT//2 + restart_text1.get_height()
-                                 + game_over_text.get_height()))
+        WIN.blit(restart_text2, (WIDTH//2 - restart_text2.get_width()//2, HEIGHT//2 + restart_text1.get_height() + game_over_text.get_height()))
+        
         pygame.display.update()
 
         for event in pygame.event.get():
@@ -399,6 +404,7 @@ def start_game_loop():
                 if event.key == pygame.K_ESCAPE:
                     running = False
                     pygame.quit()
+                    exit(0)
                 elif event.key == pygame.K_RETURN:
                     running = True
                     start_game_loop()
@@ -420,7 +426,6 @@ def update_high_score(score):
 
     if len(query_return) > 0:
         query = "UPDATE `BCI_users` SET `high_score`= %s WHERE name = %s"
-        print(username)
         vals = (score,username)
 
         cursor.execute(query, vals)
