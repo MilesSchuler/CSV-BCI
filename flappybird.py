@@ -23,11 +23,17 @@ import random
 testing = False
 
 # Set to false if needing to test non-blink gameplay
-USE_BLINK_DETECTION = False
+USE_BLINK_DETECTION = True
 MAX_SAMPLES = 24
 DEJITTER = True
 ai_blink_timestamps = []
 blink_calls = []
+
+# Ensuring you can't start the game before the muse stream is connected
+global connected
+connected = False
+if not USE_BLINK_DETECTION:
+    connected = True
 
 # Database connection setup
 mydb = mysql.connector.connect(
@@ -265,6 +271,7 @@ def show_leaderboard():
 
 
 def main_menu():
+    global connected
     run = True
 
     username = ''
@@ -278,8 +285,10 @@ def main_menu():
     input_rect = pygame.Rect(120, 200, 300, 35)
 
     # Play button
-    button_text = FONT.render('PLAY',True, MORNING_PALETTE[0])
-    play_button = pygame.Rect(300, 200, button_text.get_width() + 10, 35)
+    # only if headset is connected!
+    if connected:
+        button_text = FONT.render('PLAY',True, MORNING_PALETTE[0])
+        play_button = pygame.Rect(300, 200, button_text.get_width() + 10, 35)
 
     leaderboard_rect = pygame.Rect(10, 10, 240, 35)
 
@@ -330,13 +339,15 @@ def main_menu():
             cursor_visible = False
 
         pygame.draw.rect(WIN, color_input_rect, input_rect, 2, border_radius=10)
-        pygame.draw.rect(WIN, color_enter_rect, play_button, border_radius = 10)
+        if connected:
+            pygame.draw.rect(WIN, color_enter_rect, play_button, border_radius = 10)
 
         pygame.draw.rect(WIN, color_leaderboard_rect, leaderboard_rect, border_radius = 10)
         text_surface = FONT.render(username, True, TEXT_COLOR)
         WIN.blit(text_surface, (input_rect.x + 5, input_rect.y + 5)) 
 
-        WIN.blit(button_text, (play_button.x + 5, play_button.y + 5))
+        if connected:
+            WIN.blit(button_text, (play_button.x + 5, play_button.y + 5))
 
         leaderboard_text = FONT.render("Show Leaderboard", True, MORNING_PALETTE[0])
         WIN.blit(leaderboard_text, leaderboard_text.get_rect(center=leaderboard_rect.center))
@@ -531,6 +542,7 @@ def leaderboard():
 
 def ai_analysis_thread():
     global ai_blink_timestamps, blink_calls
+    global connected
 
     MAX_SAMPLES = 24
     WINDOW_SIZE = 5
@@ -550,6 +562,7 @@ def ai_analysis_thread():
     if marker_streams:
         inlet_marker = StreamInlet(marker_streams[0])
         marker_time_correction = inlet_marker.time_correction()
+        connected = True
     else:
         inlet_marker = False
         print("Can't find Markers stream")
