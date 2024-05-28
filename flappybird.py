@@ -73,7 +73,8 @@ night_palette = [(41, 59, 128), # sky
                  ]
 
 # Fonts
-FONT = pygame.font.Font('SundayMilk.ttf', 30)
+FONT = pygame.font.Font('CSV_BCI/Fonts/SundayMilk.ttf', 30)
+BIG_FONT = pygame.font.Font('CSV_BCI/Fonts/SundayMilk.ttf', 50)
 
 TEXT_COLOR = morning_palette[3]
 
@@ -176,7 +177,6 @@ def add_username(new_username):
     if len(potential_username) > 0:
         # assuming 'name' is the first column in the database
         username = potential_username[0][0]
-        print("We found it. ")
     else:
         query = 'INSERT INTO `BCI_users`(`name`, `high_score`) VALUES (%s,%s)'
         vals = (new_username, 0)
@@ -276,9 +276,10 @@ def main_menu():
     CURSOR_CYCLE = 700
     cursor_timer = 0
     
+    button_text = FONT.render('PLAY',True, (0,0,0))
 
     input_rect = pygame.Rect(120, 200, 300, 35)
-    enter_rect = pygame.Rect(305, 200, 35, 35)
+    play_button = pygame.Rect(300, 200, button_text.get_width() + 10, 35)
     leaderboard_rect = pygame.Rect(10, 10, 240, 35)
 
     color_active = morning_palette[2]
@@ -299,7 +300,7 @@ def main_menu():
                 if input_rect.collidepoint(event.pos):
                     active = True
                     color_input_rect = color_active
-                elif enter_rect.collidepoint(event.pos) and len(username) > 0:
+                elif play_button.collidepoint(event.pos) and len(username) > 0:
                     add_username(username)
                     start_game_loop()
                 elif leaderboard_rect.collidepoint(event.pos):
@@ -327,10 +328,13 @@ def main_menu():
             cursor_visible = False
 
         pygame.draw.rect(WIN, color_input_rect, input_rect, 2, border_radius=10)
-        pygame.draw.rect(WIN, color_enter_rect , enter_rect, border_radius = 10)
+        pygame.draw.rect(WIN, color_enter_rect, play_button, 2, border_radius = 10)
+
         pygame.draw.rect(WIN, color_leaderboard_rect, leaderboard_rect, border_radius = 10)
         text_surface = FONT.render(username, True, TEXT_COLOR)
         WIN.blit(text_surface, (input_rect.x + 5, input_rect.y + 5)) 
+
+        WIN.blit(button_text, (play_button.x + 5, play_button.y + 5))
         leaderboard_text = FONT.render("Show Leaderboard", True, morning_palette[0])
         WIN.blit(leaderboard_text, leaderboard_text.get_rect(center=leaderboard_rect.center))
 
@@ -343,7 +347,6 @@ def main_menu():
         input_rect.w = max(150, text_surface.get_width() + 10)
 
         pygame.display.update()
-
 
 # Finding color based on "time"
 def palette_color(num):
@@ -462,18 +465,25 @@ def start_game_loop():
     while running == False:
         clock.tick(60)
 
-        game_over_text = FONT.render("Game Over!", True, morning_palette[2])
-        restart_text1 = FONT.render("Press ENTER to restart", True, morning_palette[3])
-        restart_text2 = FONT.render("Press ESC to quit", True, morning_palette[3])
-        final_score_text = FONT.render(f"Score: {score}", True, morning_palette[3])
-        current_round = FONT.render(f"Round: {roundnum}", True, morning_palette[3])
-        WIN.fill(morning_palette[0])
-        WIN.blit(game_over_text, (WIDTH//2 - game_over_text.get_width()//2, HEIGHT//2 - game_over_text.get_height()//2))
+        congrats_text = ''
+        if new_high:
+            congrats_text = FONT.render(f"NEW HIGH SCORE: {score}", True, BLACK)
+        
+        game_over_text = BIG_FONT.render("Game Over!", True, RED)
+        restart_text1 = FONT.render("Press ENTER to restart", True, BLACK)
+        restart_text2 = FONT.render("Press ESC to quit", True, BLACK)
+        final_score_text = FONT.render(f"Score: {score}", True, BLACK)
+        current_round = FONT.render(f"Round: {roundnum}", True, BLACK)
+        WIN.fill(WHITE)
+        if new_high:
+            WIN.blit(congrats_text, (WIDTH//2 - congrats_text.get_width()//2, HEIGHT//2 - congrats_text.get_height()//2))
+        
+        WIN.blit(game_over_text, (WIDTH//2 - game_over_text.get_width()//2, HEIGHT/2 - game_over_text.get_height() - 30))
         WIN.blit(final_score_text, (10,10))
         WIN.blit(current_round, (WIN.get_width() - round.get_width() - 10, 10))
         WIN.blit(restart_text1, (WIDTH//2 - restart_text1.get_width()//2, HEIGHT//2 + game_over_text.get_height()))
-        WIN.blit(restart_text2, (WIDTH//2 - restart_text2.get_width()//2, HEIGHT//2 + restart_text1.get_height()
-                                 + game_over_text.get_height()))
+        WIN.blit(restart_text2, (WIDTH//2 - restart_text2.get_width()//2, HEIGHT//2 + restart_text1.get_height() + game_over_text.get_height()))
+        
         pygame.display.update()
 
         for event in pygame.event.get():
@@ -481,6 +491,7 @@ def start_game_loop():
                 if event.key == pygame.K_ESCAPE:
                     running = False
                     pygame.quit()
+                    exit(0)
                 elif event.key == pygame.K_RETURN:
                     running = True
                     start_game_loop()
@@ -502,7 +513,6 @@ def update_high_score(score):
 
     if len(query_return) > 0:
         query = "UPDATE `BCI_users` SET `high_score`= %s WHERE name = %s"
-        print(username)
         vals = (score,username)
 
         cursor.execute(query, vals)
@@ -610,8 +620,6 @@ if USE_BLINK_DETECTION:
     ai_thread = Thread(target=ai_analysis_thread)
     ai_thread.daemon = True
     ai_thread.start()
-
-sleep(10)
 
 main_menu()
 
