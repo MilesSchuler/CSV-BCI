@@ -149,9 +149,9 @@ def generate_coins(pipes):
 class Pipe:
     def __init__(self, x):
         self.x = x
-        self.height = random.randint(150, 400)
+        self.height = random.randint(50, 300)
         self.top_pipe = pygame.Rect(self.x, 0, 50, self.height)
-        self.bottom_pipe = pygame.Rect(self.x, self.height + 200, 50, HEIGHT - self.height - 200)
+        self.bottom_pipe = pygame.Rect(self.x, self.height + 250, 50, HEIGHT - self.height - 250)
         self.passed = False
 
     def move(self):
@@ -405,6 +405,9 @@ def start_game_loop():
     clock = pygame.time.Clock()
     score = 0
 
+    if USE_BLINK_DETECTION:
+        bird.lift = -3.5
+
     running = True
     while running:
         clock.tick(60)
@@ -422,8 +425,10 @@ def start_game_loop():
 
         # DO BLINK DETECTION HERE
         if USE_BLINK_DETECTION:
-            if blink_calls[-1] == "blink":
-                bird.flap()
+            # make sure its not empty
+            if blink_calls:
+                if blink_calls[-1] == "blink":
+                    bird.flap()
 
         bird.update()
 
@@ -620,11 +625,9 @@ def ai_analysis_thread():
 
             if prediction[0][0] >= BLINK_THRESHOLD:
                 # adjust for delay MAYBE
-                print("blink")
                 ai_blink_timestamps.append(times[-1])
                 blink_calls.append("blink")
             else:
-                print("no blink")
                 blink_calls.append("no blink")
         else:
             sleep(0.05)
