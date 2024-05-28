@@ -22,13 +22,14 @@ import random
 # Setting to true allows bird to ignore all pipes for testing purposes
 testing = False
 
-# Setting to False for testing purposes
+# Set to false if needing to test non-blink gameplay
 USE_BLINK_DETECTION = False
 MAX_SAMPLES = 24
 DEJITTER = True
 ai_blink_timestamps = []
 blink_calls = []
 
+# Database connection setup
 mydb = mysql.connector.connect(
     host = "mysql.2324.lakeside-cs.org",
     user = 'student2324',
@@ -40,9 +41,7 @@ cursor = mydb.cursor()
 
 username = ''
 
-# flappybird.py can't find training_constants on my laptop, using place, this is the placeholder (commented out):
-# CHUNK_LENGTH = 2
-
+# Initialize pygame
 pygame.init()
 
 # Set up display
@@ -50,38 +49,37 @@ WIDTH, HEIGHT = 400, 600
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Flappy Bird")
 
-# Colors
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
-
-# sky colors
-
 # color palettes
-morning_palette = [(222, 229, 255), # sky
+global MORNING_PALETTE
+MORNING_PALETTE = [(222, 229, 255), # sky
                    (128, 67, 41), # pipes
-                   (110, 41, 128), # bird
+                   (110, 41, 128), # bird and text color 2
                    (41, 59, 128), # text
                    (218, 221, 109) # coins
                    ]
-night_palette = [(41, 59, 128), # sky
+global NIGHT_PALETTE
+NIGHT_PALETTE = [(41, 59, 128), # sky
                  (255, 232, 222), # pipes
-                 (248, 222, 255), # bird
+                 (248, 222, 255), # bird and text color 2
                  (222, 229, 255), # text
                  (254, 255, 219) # coins
                  ]
 
 # Fonts
-FONT = pygame.font.Font('CSV_BCI/Fonts/SundayMilk.ttf', 30)
-BIG_FONT = pygame.font.Font('CSV_BCI/Fonts/SundayMilk.ttf', 50)
+FONT = pygame.font.Font('SundayMilk.ttf', 30)
+BIG_FONT = pygame.font.Font('SundayMilk.ttf', 50)
 
-TEXT_COLOR = morning_palette[3]
+# colors again (for ease of use)
+global TEXT_COLOR
+TEXT_COLOR = MORNING_PALETTE[3]
+global TEXT_COLOR2
+TEXT_COLOR2 = MORNING_PALETTE[2]
 
-# Constants
+# Bird constants
 GRAVITY = 0.25
 FLAP_STRENGTH = 5
 
+# Keeping track of rounds
 global roundnum
 roundnum = 0
 
@@ -122,7 +120,7 @@ class Coin:
     def draw(self):
         pygame.draw.rect(WIN, palette_color(4), self.image)
 
-# generating coins that don't overlap with pipes
+# Generating coins
 def generate_coins(pipes):
     while True:
         coin_x = random.randint(WIDTH, WIDTH + 800)
@@ -164,9 +162,11 @@ def draw_text(text, x, y, color):
     img = FONT.render(text, True, color)
     WIN.blit(img, (x, y))
 
+# adding new users
 def add_username(new_username):
     global username 
     
+    # checking to see if a new username needs to be added
     query = 'SELECT * FROM BCI_users WHERE name = %s'
     vals = (new_username,)
 
@@ -186,18 +186,18 @@ def add_username(new_username):
 
         username = new_username
 
-        print("We added it gang")
+        print("New user added")
 
-
+# Generates the leaderboard found through the home page
 def show_leaderboard():
     global rankings
-    global morning_palette
 
+    # For pagination
     ITEMS_PER_PAGE = 5
     current_page = 0
 
     rankings = leaderboard()
-    rankings.sort(key=lambda x: x[1], reverse=True)
+    rankings.sort(key=lambda x: x[1], reverse=True) # Sorts users from highest to lowest score
 
     run = True
 
@@ -205,35 +205,36 @@ def show_leaderboard():
         start_index = current_page * ITEMS_PER_PAGE
         end_index = start_index + ITEMS_PER_PAGE
 
-        WIN.fill(morning_palette[0])
+        WIN.fill(MORNING_PALETTE[0])
 
         # Back button
         back_rect = pygame.Rect(10, 10, 160, 35)
-        color_back_rect = morning_palette[3]
+        color_back_rect = MORNING_PALETTE[3]
         pygame.draw.rect(WIN, color_back_rect, back_rect, border_radius = 10)
-        back_text = FONT.render("Go back", True, morning_palette[0])
+        back_text = FONT.render("Go back", True, MORNING_PALETTE[0])
         WIN.blit(back_text, back_text.get_rect(center=back_rect.center))
 
         msg = FONT.render(f"LEADERBOARD ({start_index + 1} - {min(end_index, len(rankings))})", True, TEXT_COLOR)
         WIN.blit(msg, ((WIN.get_width() - msg.get_width()) / 2, 100))
 
+        # Displays rankings
         for i, (name, score) in enumerate(rankings[start_index:end_index]):
             rank_text = FONT.render(f"{start_index + i + 1}. {name}: {score}", True, TEXT_COLOR)
             WIN.blit(rank_text, (50, 200 + i * 30))
 
-        # pagination
+        # Variables for pagination
         prev_rect = next_rect = prev_text = next_text = None
 
-        if current_page > 0:
+        if current_page > 0: # If not on first page, show the prev button
             prev_rect = pygame.Rect(10, HEIGHT - 50, 70, 35)
-            pygame.draw.rect(WIN, morning_palette[3], prev_rect, border_radius = 10)
-            prev_text = FONT.render("Prev", True, morning_palette[0])
+            pygame.draw.rect(WIN, MORNING_PALETTE[3], prev_rect, border_radius = 10)
+            prev_text = FONT.render("Prev", True, MORNING_PALETTE[0])
             WIN.blit(prev_text, prev_text.get_rect(center=prev_rect.center))
 
-        if end_index < len(rankings):
+        if end_index < len(rankings): # If not on last page, show the next button
             next_rect = pygame.Rect(WIDTH - 80, HEIGHT - 50, 70, 35)
-            pygame.draw.rect(WIN, morning_palette[3], next_rect, border_radius = 10)
-            next_text = FONT.render("Next", True, morning_palette[0])
+            pygame.draw.rect(WIN, MORNING_PALETTE[3], next_rect, border_radius = 10)
+            next_text = FONT.render("Next", True, MORNING_PALETTE[0])
             WIN.blit(next_text, next_text.get_rect(center=next_rect.center))
         
         pygame.display.update()
@@ -250,13 +251,13 @@ def show_leaderboard():
                 pygame.quit()
                 sys.exit()
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if back_rect.collidepoint(event.pos):
+                if back_rect.collidepoint(event.pos): # Return to main menu
                     run = False
                 
-                elif prev_rect and prev_rect.collidepoint(event.pos):
+                elif prev_rect and prev_rect.collidepoint(event.pos): # Previous page
                     current_page -= 1
                     break
-                elif next_rect and next_rect.collidepoint(event.pos):
+                elif next_rect and next_rect.collidepoint(event.pos): # Next page
                     current_page += 1
                     break
     
@@ -264,34 +265,34 @@ def show_leaderboard():
 
 
 def main_menu():
-    global morning_palette
-    global night_palette
-
     run = True
 
     username = ''
 
-    # cursor stuff
+    # Blinking cursor
     cursor_visible = True
     CURSOR_CYCLE = 700
     cursor_timer = 0
-    
-    button_text = FONT.render('PLAY',True, (0,0,0))
 
+    # Username input rectangle
     input_rect = pygame.Rect(120, 200, 300, 35)
+
+    # Play button
+    button_text = FONT.render('PLAY',True, MORNING_PALETTE[0])
     play_button = pygame.Rect(300, 200, button_text.get_width() + 10, 35)
+
     leaderboard_rect = pygame.Rect(10, 10, 240, 35)
 
-    color_active = morning_palette[2]
-    color_passive = morning_palette[3]
+    color_active = MORNING_PALETTE[2]
+    color_passive = MORNING_PALETTE[3]
 
     color_input_rect = color_passive
-    color_enter_rect = morning_palette[3]
-    color_leaderboard_rect = morning_palette[3]
+    color_enter_rect = MORNING_PALETTE[3]
+    color_leaderboard_rect = MORNING_PALETTE[3]
     active = False 
 
     while run: 
-        WIN.fill(morning_palette[0])
+        WIN.fill(MORNING_PALETTE[0])
         msg = FONT.render("ENTER NICKNAME!", True, TEXT_COLOR)
         WIN.blit(msg, ((WIN.get_width() - msg.get_width())/2, 150))
 
@@ -299,7 +300,7 @@ def main_menu():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if input_rect.collidepoint(event.pos):
                     active = True
-                    color_input_rect = color_active
+                    color_input_rect = color_active # "select" the input rectangle (visual feedback)
                 elif play_button.collidepoint(event.pos) and len(username) > 0:
                     add_username(username)
                     start_game_loop()
@@ -320,6 +321,7 @@ def main_menu():
                     username = username[:-1]
                 elif len(username) < 10 and active == True:
                     username += event.unicode
+
         cursor_timer = pygame.time.get_ticks() % CURSOR_CYCLE
         # Update cursor visibility
         if cursor_timer < (CURSOR_CYCLE) / 2:
@@ -328,14 +330,15 @@ def main_menu():
             cursor_visible = False
 
         pygame.draw.rect(WIN, color_input_rect, input_rect, 2, border_radius=10)
-        pygame.draw.rect(WIN, color_enter_rect, play_button, 2, border_radius = 10)
+        pygame.draw.rect(WIN, color_enter_rect, play_button, border_radius = 10)
 
         pygame.draw.rect(WIN, color_leaderboard_rect, leaderboard_rect, border_radius = 10)
         text_surface = FONT.render(username, True, TEXT_COLOR)
         WIN.blit(text_surface, (input_rect.x + 5, input_rect.y + 5)) 
 
         WIN.blit(button_text, (play_button.x + 5, play_button.y + 5))
-        leaderboard_text = FONT.render("Show Leaderboard", True, morning_palette[0])
+
+        leaderboard_text = FONT.render("Show Leaderboard", True, MORNING_PALETTE[0])
         WIN.blit(leaderboard_text, leaderboard_text.get_rect(center=leaderboard_rect.center))
 
         # Draw cursor if visible and input box is active
@@ -350,9 +353,6 @@ def main_menu():
 
 # Finding color based on "time"
 def palette_color(num):
-    global morning_palette
-    global night_palette
-
     elapsed_time = pygame.time.get_ticks()
     total_time = 120000  # 2 min for a complete color cycle
     cycle_time = elapsed_time % total_time
@@ -360,16 +360,16 @@ def palette_color(num):
 
     if cycle_time < (total_time / 4): # First 4th of the cycle
         # Daytime
-        return morning_palette[num]
+        return MORNING_PALETTE[num]
     elif cycle_time < (total_time / 2):
         # Transition to night
-        return (interpolate_color(morning_palette[num], night_palette[num], (t - 0.25) * 4))
+        return (interpolate_color(MORNING_PALETTE[num], NIGHT_PALETTE[num], (t - 0.25) * 4))
     elif cycle_time < (3 * (total_time) / 4):
         # Night
-        return night_palette[num]
+        return NIGHT_PALETTE[num]
     else:
         # Transition to day
-        return (interpolate_color(night_palette[num], morning_palette[num], (t - 0.75) * 4))
+        return (interpolate_color(NIGHT_PALETTE[num], MORNING_PALETTE[num], (t - 0.75) * 4))
 
         
 # Interpolating from color 1 to 2
@@ -381,14 +381,12 @@ def interpolate_color(color1, color2, t):
 
 # Main function
 def start_game_loop():
-    global morning_palette
-    global night_palette
     global testing
 
     global roundnum
     roundnum += 1
-    start_time = pygame.time.get_ticks()
 
+    # Setup
     global bird
     bird = Bird()
     pipes = [Pipe(WIDTH + i * 250) for i in range(2)]
@@ -400,7 +398,7 @@ def start_game_loop():
     while running:
         clock.tick(60)
 
-        color = palette_color(0)
+        color = palette_color(0) # sky color changes based on in-game time
         WIN.fill(color)
 
         for event in pygame.event.get():
@@ -418,6 +416,7 @@ def start_game_loop():
 
         bird.update()
 
+        # Pipe generation, movement, interactions
         for pipe in pipes:
             pipe.move()
             if pipe.top_pipe.right < 0:
@@ -430,6 +429,7 @@ def start_game_loop():
                 pipe.passed = True
                 score += 1
 
+        # Coin generation, movement, interactions
         for coin in coins:
             coin.move()
             if coin.x < 0:
@@ -441,7 +441,7 @@ def start_game_loop():
                 coins.append(Coin(random.randint(WIDTH, WIDTH + 800), random.randint(100, HEIGHT - 100)))
                 score += 10
 
-        if bird.y > HEIGHT or bird.y < 0:
+        if bird.y > HEIGHT or bird.y < 0: # If you crash into the top/bottom
             running = False
 
         bird.draw()
@@ -467,14 +467,14 @@ def start_game_loop():
 
         congrats_text = ''
         if new_high:
-            congrats_text = FONT.render(f"NEW HIGH SCORE: {score}", True, BLACK)
+            congrats_text = FONT.render(f"NEW HIGH SCORE: {score}", True, TEXT_COLOR)
         
-        game_over_text = BIG_FONT.render("Game Over!", True, RED)
-        restart_text1 = FONT.render("Press ENTER to restart", True, BLACK)
-        restart_text2 = FONT.render("Press ESC to quit", True, BLACK)
-        final_score_text = FONT.render(f"Score: {score}", True, BLACK)
-        current_round = FONT.render(f"Round: {roundnum}", True, BLACK)
-        WIN.fill(WHITE)
+        game_over_text = BIG_FONT.render("Game Over!", True, TEXT_COLOR2)
+        restart_text1 = FONT.render("Press ENTER to restart", True, TEXT_COLOR)
+        restart_text2 = FONT.render("Press ESC to quit", True, TEXT_COLOR)
+        final_score_text = FONT.render(f"Score: {score}", True, TEXT_COLOR)
+        current_round = FONT.render(f"Round: {roundnum}", True, TEXT_COLOR)
+        WIN.fill(MORNING_PALETTE[0])
         if new_high:
             WIN.blit(congrats_text, (WIDTH//2 - congrats_text.get_width()//2, HEIGHT//2 - congrats_text.get_height()//2))
         
