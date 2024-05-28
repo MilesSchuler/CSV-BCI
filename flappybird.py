@@ -310,7 +310,7 @@ def main_menu():
                 if input_rect.collidepoint(event.pos):
                     active = True
                     color_input_rect = color_active # "select" the input rectangle (visual feedback)
-                elif play_button.collidepoint(event.pos) and len(username) > 0:
+                elif connected and play_button.collidepoint(event.pos) and len(username) > 0:
                     add_username(username)
                     start_game_loop()
                 elif leaderboard_rect.collidepoint(event.pos):
