@@ -188,6 +188,81 @@ def add_username(new_username):
 
         print("We added it gang")
 
+
+def show_leaderboard():
+    global rankings
+    global morning_palette
+
+    ITEMS_PER_PAGE = 5
+    current_page = 0
+
+    rankings = leaderboard()
+    rankings.sort(key=lambda x: x[1], reverse=True)
+
+    run = True
+
+    def draw_leaderboard():
+        start_index = current_page * ITEMS_PER_PAGE
+        end_index = start_index + ITEMS_PER_PAGE
+
+        WIN.fill(morning_palette[0])
+
+        # Back button
+        back_rect = pygame.Rect(10, 10, 160, 35)
+        color_back_rect = morning_palette[3]
+        pygame.draw.rect(WIN, color_back_rect, back_rect, border_radius = 10)
+        back_text = FONT.render("Go back", True, morning_palette[0])
+        WIN.blit(back_text, back_text.get_rect(center=back_rect.center))
+
+        msg = FONT.render(f"LEADERBOARD ({start_index + 1} - {min(end_index, len(rankings))})", True, TEXT_COLOR)
+        WIN.blit(msg, ((WIN.get_width() - msg.get_width()) / 2, 100))
+
+        for i, (name, score) in enumerate(rankings[start_index:end_index]):
+            rank_text = FONT.render(f"{start_index + i + 1}. {name}: {score}", True, TEXT_COLOR)
+            WIN.blit(rank_text, (50, 200 + i * 30))
+
+        # pagination
+        prev_rect = next_rect = prev_text = next_text = None
+
+        if current_page > 0:
+            prev_rect = pygame.Rect(10, HEIGHT - 50, 70, 35)
+            pygame.draw.rect(WIN, morning_palette[3], prev_rect, border_radius = 10)
+            prev_text = FONT.render("Prev", True, morning_palette[0])
+            WIN.blit(prev_text, prev_text.get_rect(center=prev_rect.center))
+
+        if end_index < len(rankings):
+            next_rect = pygame.Rect(WIDTH - 80, HEIGHT - 50, 70, 35)
+            pygame.draw.rect(WIN, morning_palette[3], next_rect, border_radius = 10)
+            next_text = FONT.render("Next", True, morning_palette[0])
+            WIN.blit(next_text, next_text.get_rect(center=next_rect.center))
+        
+        pygame.display.update()
+        
+        return back_rect, prev_rect, next_rect
+
+
+
+    while run:
+        back_rect, prev_rect, next_rect = draw_leaderboard()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if back_rect.collidepoint(event.pos):
+                    run = False
+                
+                elif prev_rect and prev_rect.collidepoint(event.pos):
+                    current_page -= 1
+                    break
+                elif next_rect and next_rect.collidepoint(event.pos):
+                    current_page += 1
+                    break
+    
+    main_menu()
+
+
 def main_menu():
     global morning_palette
     global night_palette
@@ -204,12 +279,14 @@ def main_menu():
 
     input_rect = pygame.Rect(120, 200, 300, 35)
     enter_rect = pygame.Rect(305, 200, 35, 35)
+    leaderboard_rect = pygame.Rect(10, 10, 240, 35)
 
     color_active = morning_palette[2]
     color_passive = morning_palette[3]
 
     color_input_rect = color_passive
     color_enter_rect = morning_palette[3]
+    color_leaderboard_rect = morning_palette[3]
     active = False 
 
     while run: 
@@ -225,6 +302,8 @@ def main_menu():
                 elif enter_rect.collidepoint(event.pos) and len(username) > 0:
                     add_username(username)
                     start_game_loop()
+                elif leaderboard_rect.collidepoint(event.pos):
+                    show_leaderboard()
                 else:
                     active = False
                     color_input_rect = color_passive
@@ -249,8 +328,11 @@ def main_menu():
 
         pygame.draw.rect(WIN, color_input_rect, input_rect, 2, border_radius=10)
         pygame.draw.rect(WIN, color_enter_rect , enter_rect, border_radius = 10)
-        text_surface = FONT.render(username, True, (0, 0, 0))
+        pygame.draw.rect(WIN, color_leaderboard_rect, leaderboard_rect, border_radius = 10)
+        text_surface = FONT.render(username, True, TEXT_COLOR)
         WIN.blit(text_surface, (input_rect.x + 5, input_rect.y + 5)) 
+        leaderboard_text = FONT.render("Show Leaderboard", True, morning_palette[0])
+        WIN.blit(leaderboard_text, leaderboard_text.get_rect(center=leaderboard_rect.center))
 
         # Draw cursor if visible and input box is active
         if cursor_visible and active:
@@ -430,6 +512,13 @@ def update_high_score(score):
     
     return False 
 
+def leaderboard():
+    query = "SELECT * FROM BCI_users"
+    cursor.execute(query,)
+    query_return = cursor.fetchall()
+
+    return query_return
+
 def ai_analysis_thread():
     global ai_blink_timestamps, blink_calls
 
@@ -515,7 +604,7 @@ def ai_analysis_thread():
                 print("no blink")
                 blink_calls.append("no blink")
         else:
-            sleep(0.1)
+            sleep(0.05)
 
 if USE_BLINK_DETECTION:
     ai_thread = Thread(target=ai_analysis_thread)
