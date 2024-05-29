@@ -23,7 +23,7 @@ import random
 testing = False
 
 # Set to false if needing to test non-blink gameplay
-USE_BLINK_DETECTION = True
+USE_BLINK_DETECTION = False
 MAX_SAMPLES = 24
 DEJITTER = True
 ai_blink_timestamps = []
@@ -72,8 +72,8 @@ NIGHT_PALETTE = [(41, 59, 128), # sky
                  ]
 
 # Fonts
-FONT = pygame.font.Font('SundayMilk.ttf', 30)
-BIG_FONT = pygame.font.Font('SundayMilk.ttf', 50)
+FONT = pygame.font.Font('CSV_BCI/Fonts/SundayMilk.ttf', 30)
+BIG_FONT = pygame.font.Font('CSV_BCI/Fonts/SundayMilk.ttf', 50)
 
 # colors again (for ease of use)
 global TEXT_COLOR
@@ -192,8 +192,6 @@ def add_username(new_username):
 
         username = new_username
 
-        print("New user added")
-
 # Generates the leaderboard found through the home page
 def show_leaderboard():
     global rankings
@@ -271,7 +269,6 @@ def show_leaderboard():
 
 
 def main_menu():
-    global connected
     run = True
 
     username = ''
@@ -282,13 +279,11 @@ def main_menu():
     cursor_timer = 0
 
     # Username input rectangle
-    input_rect = pygame.Rect(120, 200, 300, 35)
+    input_rect = pygame.Rect(120, 250, 300, 35)
 
     # Play button
-    # only if headset is connected!
-    if connected:
-        button_text = FONT.render('PLAY',True, MORNING_PALETTE[0])
-        play_button = pygame.Rect(300, 200, button_text.get_width() + 10, 35)
+    button_text = FONT.render('PLAY',True, MORNING_PALETTE[0])
+    play_button = pygame.Rect(300, 250, button_text.get_width() + 10, 35)
 
     leaderboard_rect = pygame.Rect(10, 10, 240, 35)
 
@@ -302,15 +297,22 @@ def main_menu():
 
     while run: 
         WIN.fill(MORNING_PALETTE[0])
+        
+        header = BIG_FONT.render("FLAPPYBIRD", True, TEXT_COLOR)
+        header_rect = header.get_rect(center = (WIN.get_width()/2, 120))
+        WIN.blit(header, header_rect)
+
+        ## not using get_rect here because the spacing makes more sense
+        ## get_rect creates too much spacing between "ENTER NICKNAME" and the text box 
         msg = FONT.render("ENTER NICKNAME!", True, TEXT_COLOR)
-        WIN.blit(msg, ((WIN.get_width() - msg.get_width())/2, 150))
+        WIN.blit(msg, ((WIN.get_width() - msg.get_width())/2, 200))
 
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if input_rect.collidepoint(event.pos):
                     active = True
                     color_input_rect = color_active # "select" the input rectangle (visual feedback)
-                elif connected and play_button.collidepoint(event.pos) and len(username) > 0:
+                elif play_button.collidepoint(event.pos) and len(username) > 0:
                     add_username(username)
                     start_game_loop()
                 elif leaderboard_rect.collidepoint(event.pos):
@@ -319,7 +321,7 @@ def main_menu():
                     active = False
                     color_input_rect = color_passive
 
-
+        
             if event.type == pygame.QUIT:
                 run = False
             elif event.type == pygame.KEYDOWN:
@@ -339,18 +341,30 @@ def main_menu():
             cursor_visible = False
 
         pygame.draw.rect(WIN, color_input_rect, input_rect, 2, border_radius=10)
-        if connected:
-            pygame.draw.rect(WIN, color_enter_rect, play_button, border_radius = 10)
+        pygame.draw.rect(WIN, color_enter_rect, play_button, border_radius = 10)
 
         pygame.draw.rect(WIN, color_leaderboard_rect, leaderboard_rect, border_radius = 10)
         text_surface = FONT.render(username, True, TEXT_COLOR)
         WIN.blit(text_surface, (input_rect.x + 5, input_rect.y + 5)) 
 
-        if connected:
-            WIN.blit(button_text, (play_button.x + 5, play_button.y + 5))
+        WIN.blit(button_text, (play_button.x + 5, play_button.y + 5))
 
         leaderboard_text = FONT.render("Show Leaderboard", True, MORNING_PALETTE[0])
         WIN.blit(leaderboard_text, leaderboard_text.get_rect(center=leaderboard_rect.center))
+
+
+        ## write instructions 
+        instruct_head = FONT.render("HOW TO PLAY:", True, TEXT_COLOR)
+        instruct_1 = FONT.render("1. Blink to jump", True, TEXT_COLOR)
+        instruct_2 = FONT.render("2. Collect coins", True, TEXT_COLOR)
+        instruct_3 = FONT.render("3. Avoid columns!", True, TEXT_COLOR)
+
+        header_y = 350
+
+        WIN.blit(instruct_head, instruct_head.get_rect(center = (WIN.get_width()/2, header_y)))
+        WIN.blit(instruct_1, ((WIN.get_width()/2) - 100, header_y + 50))
+        WIN.blit(instruct_2, ((WIN.get_width()/2) - 100, header_y + 100))
+        WIN.blit(instruct_3, ((WIN.get_width()/2) - 100, header_y + 150))
 
         # Draw cursor if visible and input box is active
         if cursor_visible and active:
