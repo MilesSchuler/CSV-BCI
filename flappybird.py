@@ -406,7 +406,7 @@ def interpolate_color(color1, color2, t):
             int(color1[1] + (color2[1] - color1[1]) * t),
             int(color1[2] + (color2[2] - color1[2]) * t))
 
-# Main function
+# Main function where game is played 
 def start_game_loop():
     global testing
 
@@ -425,19 +425,12 @@ def start_game_loop():
         bird.lift = -3.5
 
     running = True
+
     while running:
         clock.tick(60)
 
         color = palette_color(0) # sky color changes based on in-game time
         WIN.fill(color)
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    if not USE_BLINK_DETECTION:
-                        bird.flap()
 
         # DO BLINK DETECTION HERE
         if USE_BLINK_DETECTION:
@@ -488,12 +481,31 @@ def start_game_loop():
         round = FONT.render(f"Round: {roundnum}", True, palette_color(3))
         WIN.blit(round, (WIN.get_width() - round.get_width() - 10, 10))
 
+
+        pause_text = FONT.render('PAUSE',True, MORNING_PALETTE[0])
+        pause_button = pygame.Rect((WIN.get_width()/2) - pause_text.get_width()/2, 10, pause_text.get_width() + 10, pause_text.get_height()+10)
+
+        pygame.draw.rect(WIN, (0,0,0), pause_button, border_radius = 10)
+        WIN.blit(pause_text, (pause_button.x + 5, pause_button.y + 5))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    if not USE_BLINK_DETECTION:
+                        bird.flap()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if pause_button.collidepoint(event.pos):
+                    pause_page(score, roundnum)
+
         pygame.display.update()
 
     
     # True if they broke old high score, false if they did not. 
     new_high = update_high_score(score) 
 
+    # death screen 
     while running == False:
         clock.tick(60)
 
@@ -528,7 +540,34 @@ def start_game_loop():
                     running = True
                     start_game_loop()
     
+def pause_page(score, roundnum):
+    while True: 
+        WIN.fill(MORNING_PALETTE[0])
+        
+        notification = BIG_FONT.render("PAUSED", True, TEXT_COLOR)
 
+        restart_text1 = FONT.render("Press ENTER to resume", True, TEXT_COLOR)
+        restart_text2 = FONT.render("Press ESC to quit", True, TEXT_COLOR)
+
+        score_text = FONT.render(f"Score: {score}", True, palette_color(3))
+        WIN.blit(score_text, (10, 10))
+
+        round = FONT.render(f"Round: {roundnum}", True, palette_color(3))
+        WIN.blit(round, (WIN.get_width() - round.get_width() - 10, 10))
+
+        WIN.blit(notification, (WIDTH // 2 - notification.get_width() // 2, HEIGHT // 2 - 100))
+        WIN.blit(restart_text1, (WIDTH // 2 - restart_text1.get_width() // 2, HEIGHT // 2))
+        WIN.blit(restart_text2, (WIDTH // 2 - restart_text2.get_width() // 2, HEIGHT // 2 + restart_text1.get_height()))
+
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    exit(0)
+                elif event.key == pygame.K_RETURN:
+                    return True
+
+        pygame.display.update()
 PREVIOUS = 25
 previous = []
 
