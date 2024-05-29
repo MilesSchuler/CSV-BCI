@@ -570,21 +570,25 @@ def ai_analysis_thread():
     DEJITTER = True
 
     # find stream
-    print("looking for an EEG stream...")
-    streams = resolve_byprop('type', 'EEG', timeout=2)
-    if len(streams) == 0:
-        raise Exception("Can't find EEG stream")
-    print("Start acquiring data")
-    inlet = StreamInlet(streams[0], max_chunklen=MAX_SAMPLES)
-    eeg_time_correction = inlet.time_correction()
-    print("looking for a Markers stream...")
-    marker_streams = resolve_byprop('type', 'Markers', timeout=2)
-    if marker_streams:
-        inlet_marker = StreamInlet(marker_streams[0])
-        marker_time_correction = inlet_marker.time_correction()
-    else:
-        inlet_marker = False
-        print("Can't find Markers stream")
+    try:
+        print("looking for an EEG stream...")
+        streams = resolve_byprop('type', 'EEG', timeout=2)
+        if len(streams) == 0:
+            raise Exception("Can't find EEG stream")
+        print("Start acquiring data")
+        inlet = StreamInlet(streams[0], max_chunklen=MAX_SAMPLES)
+        eeg_time_correction = inlet.time_correction()
+        print("looking for a Markers stream...")
+        marker_streams = resolve_byprop('type', 'Markers', timeout=2)
+        if marker_streams:
+            inlet_marker = StreamInlet(marker_streams[0])
+            marker_time_correction = inlet_marker.time_correction()
+        else:
+            inlet_marker = False
+            print("Can't find Markers stream")
+
+    except:
+        print("Could not find EEG data stream: Please connect your muse device and run the program again.")
 
     # code will only pass to here if stream is found
     connected = True
