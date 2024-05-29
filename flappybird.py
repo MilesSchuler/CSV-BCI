@@ -23,7 +23,7 @@ import random
 testing = False
 
 # Set to false if needing to test non-blink gameplay
-USE_BLINK_DETECTION = False
+USE_BLINK_DETECTION = True
 MAX_SAMPLES = 24
 DEJITTER = True
 ai_blink_timestamps = []
@@ -72,8 +72,8 @@ NIGHT_PALETTE = [(41, 59, 128), # sky
                  ]
 
 # Fonts
-FONT = pygame.font.Font('CSV_BCI/Fonts/SundayMilk.ttf', 30)
-BIG_FONT = pygame.font.Font('CSV_BCI/Fonts/SundayMilk.ttf', 50)
+FONT = pygame.font.Font('Fonts/SundayMilk.ttf', 30)
+BIG_FONT = pygame.font.Font('Fonts/SundayMilk.ttf', 50)
 
 # colors again (for ease of use)
 global TEXT_COLOR
@@ -313,8 +313,9 @@ def main_menu():
                     active = True
                     color_input_rect = color_active # "select" the input rectangle (visual feedback)
                 elif play_button.collidepoint(event.pos) and len(username) > 0:
-                    add_username(username)
-                    start_game_loop()
+                    if connected:
+                        add_username(username)
+                        start_game_loop()
                 elif leaderboard_rect.collidepoint(event.pos):
                     show_leaderboard()
                 else:
@@ -581,10 +582,12 @@ def ai_analysis_thread():
     if marker_streams:
         inlet_marker = StreamInlet(marker_streams[0])
         marker_time_correction = inlet_marker.time_correction()
-        connected = True
     else:
         inlet_marker = False
         print("Can't find Markers stream")
+
+    # code will only pass to here if stream is found
+    connected = True
 
     # get basic information
     info = inlet.info()
