@@ -18,6 +18,7 @@ import tensorflow as tf
 
 import pygame
 import random
+import os
 
 # Setting to true allows bird to ignore all pipes for testing purposes
 testing = False
@@ -589,6 +590,7 @@ def ai_analysis_thread():
 
     except:
         print("Could not find EEG data stream: Please connect your muse device and run the program again.")
+        os._exit(1)
 
     # code will only pass to here if stream is found
     connected = True
